@@ -1,10 +1,10 @@
 const pixels = new Map();
 let selectedTool = null;
-let selectedColor = [0, 0, 0];
 let showTutorial = false;
 
 const Input = {
     activeTarget: null, // "artboard" | "colorpicker"
+    hoverTarget: null,
     pointerId: null,
     isPointerDown: false,
 };
@@ -188,9 +188,11 @@ const ColorPicker = {
     ctx: document
         .querySelector("canvas.color-picker")
         .getContext("2d", { willReadFrequently: true }),
+    selectedColor: null,
 
     init() {
         this.dom.addEventListener("pointerdown", this.pointerDown.bind(this));
+        this.pin.placeAt(50, 50)
     },
 
     pin: {
@@ -209,9 +211,9 @@ const ColorPicker = {
             ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
 
             // Convert color array to string
-            const r = selectedColor[0];
-            const g = selectedColor[1];
-            const b = selectedColor[2];
+            const r = ColorPicker.selectedColor[0];
+            const g = ColorPicker.selectedColor[1];
+            const b = ColorPicker.selectedColor[2];
 
             ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
             ctx.fill();
@@ -278,7 +280,7 @@ const ColorPicker = {
             // Get color form triangle cache
             //const tempCtx = ColorPicker.triangle.cache.getContext("2d")
             //selectedColor = tempCtx.getImageData(Math.floor(x), Math.floor(y), 1, 1).data()
-            selectedColor = ColorPicker.ctx.getImageData(x, y, 1, 1).data;
+            ColorPicker.selectedColor = ColorPicker.ctx.getImageData(x, y, 1, 1).data;
         },
     },
     triangle: {
@@ -430,7 +432,7 @@ const TypePolyline = {
         this.isLineStarted = false;
         this.__arrowAngle = null;
 
-        this.__activateBlink(posX, posY, selectedColor);
+        this.__activateBlink(posX, posY, ColorPicker.selectedColor);
 
         // Controle do Popup
         if (showTutorial) {
@@ -532,7 +534,7 @@ const TypePolyline = {
 
         // Paint sub-line
         while (true) {
-            ArtBoard.paintPixel(this.posX, this.posY, selectedColor);
+            ArtBoard.paintPixel(this.posX, this.posY, ColorPicker.selectedColor);
             paintedPixels++;
 
             if (paintedPixels < pixelsToPaint) {
@@ -616,7 +618,7 @@ const TypePolyline = {
         this.__blinkInterval = setInterval(() => {
             this.__blinkColor = isContrastColor
                 ? constrastColor
-                : rgbArrayToString(selectedColor);
+                : rgbArrayToString(ColorPicker.selectedColor);
             isContrastColor = !isContrastColor;
         }, 500);
     },
@@ -631,10 +633,15 @@ const Pen = {
         this.lastX = x;
         this.lastY = y;
 
-        ArtBoard.paintPixel(x, y, selectedColor);
+        ArtBoard.paintPixel(x, y, ColorPicker.selectedColor);
     },
-    pointerMove(x, y) {
+    pointerMove(e) {
         if (this.lastX === null) return;
+
+        let { x, y } = getMousePos(e, ArtBoard.dom);
+        const coords = ArtBoard.getGridCoords(x, y);
+        x = coords.x 
+        y = coords.y
 
         if (x === this.lastX && y === this.lastY) return;
         this.drawLine(this.lastX, this.lastY, x, y);
@@ -657,7 +664,7 @@ const Pen = {
         let err = dx - dy;
 
         while (true) {
-            ArtBoard.paintPixel(x0, y0, selectedColor);
+            ArtBoard.paintPixel(x0, y0, ColorPicker.selectedColor);
 
             if (x0 === x1 && y0 === y1) break;
 
@@ -675,6 +682,9 @@ const Pen = {
         }
     },
 };
+const Bucket = {
+    
+}
 
 const History = {
     undoStack: [],
@@ -737,16 +747,25 @@ function windowKeyDown(e) {
     else if (e.ctrlKey && e.key === "y") History.redo();
 }
 function windowPointerMove(e) {
-    if (!Input.isPointerDown) return;
+    const artPos = getMousePos(e, ArtBoard.dom)
+    const colorPos = getMousePos(e, ColorPicker.dom)
 
-    if (Input.activeTarget === "artboard") {
-        ArtBoard.pointerMove(e);
+    if (ColorPicker.triangle.isPointInside(colorPos.x, colorPos.y)) {
+        Input.hoverTarget = "colorpicker"
+    }else if (ArtBoard.isPointInside(artPos.x, artPos.y)) {
+        Input.hoverTarget = "artboard"
+    } else {
+        Input.hoverTarget = null
+    }
 
-        const { x, y } = getMousePos(e, ArtBoard.dom);
-        const coords = ArtBoard.getGridCoords(x, y);
-        selectedTool.pointerMove?.(coords.x, coords.y);
-    } else if (Input.activeTarget === "colorpicker") {
-        ColorPicker.pointerMove(e);
+    // IF is pressing
+    if (Input.isPointerDown) {
+        if (Input.activeTarget === "artboard") {
+            ArtBoard.pointerMove(e);
+            selectedTool.pointerMove?.(e);
+        } else if (Input.activeTarget === "colorpicker") {
+            ColorPicker.pointerMove(e);
+        }
     }
 }
 function windowPointerUp(e) {
@@ -776,7 +795,7 @@ function windowPointerUp(e) {
 function windowLoad(e) {
     // Select tool
     document.querySelector("button.tool.pen").click();
-    selectedColor = [0, 0, 0, 0];
+    ColorPicker.selectedColor = [0, 0, 0, 0];
 
     ArtBoard.init();
     ColorPicker.init();
