@@ -27,6 +27,7 @@ const ArtBoard = {
         this.dom.tabIndex = 1;
 
         this.dom.addEventListener("pointerdown", (e) => this.pointerDown(e));
+        this.dom.addEventListener("click", (e) => this.click(e));
         this.dom.addEventListener("wheel", (e) => this.wheel(e));
         this.dom.addEventListener("keydown", (e) => this.keyDown(e));
     },
@@ -50,11 +51,13 @@ const ArtBoard = {
         this.camera.scale *= delta;
         this.camera.x = x - (x - this.camera.x) * delta;
         this.camera.y = y - (y - this.camera.y) * delta;
+        console.log(this.camera.scale)
     },
 
+    click(e) {
+        selectedTool.click?.(e);
+    },
     pointerDown(e) {
-        const { x, y } = getMousePos(e, this.dom);
-
         Input.activeTarget = "artboard";
         Input.pointerId = e.pointerId;
         Input.isPointerDown = true;
@@ -62,8 +65,7 @@ const ArtBoard = {
         this.dom.setPointerCapture(e.pointerId);
 
         if (!e.ctrlKey) {
-            const coords = this.getGridCoords(x, y);
-            selectedTool.pointerDown(coords.x, coords.y);
+            selectedTool.pointerDown?.(e);
         }
     },
     pointerMove(e) {
@@ -110,6 +112,7 @@ const ArtBoard = {
     },
 
     paintPixel(x, y, color) {
+        if (!color) return
         const key = `${x},${y}`;
         pixels.set(key, rgbArrayToString(color));
     },
@@ -133,9 +136,9 @@ const ArtBoard = {
             startY + Math.ceil(dom.height / (camera.scale * pixelSize));
 
         // Draw Grid
-
+        const SHOW_HELPER_LINE_100 = camera.scale < .2
         for (let x = startX; x <= endX; x++) {
-            if (x % 100 === 0) {
+            if (x % 100 === 0 && SHOW_HELPER_LINE_100) {
                 // Helper lines on each 100 pixels
                 ctx.lineWidth = 2 / camera.scale;
                 ctx.strokeStyle = "#555";
@@ -154,7 +157,7 @@ const ArtBoard = {
             ctx.stroke();
         }
         for (let y = startY; y <= endY; y++) {
-            if (y % 100 === 0) {
+            if (y % 100 === 0 && SHOW_HELPER_LINE_100) {
                 // Helper lines on each 100 pixels
                 ctx.lineWidth = 2 / camera.scale;
                 ctx.strokeStyle = "#555";
@@ -192,7 +195,7 @@ const ColorPicker = {
 
     init() {
         this.dom.addEventListener("pointerdown", this.pointerDown.bind(this));
-        this.pin.placeAt(50, 50)
+        this.pin.placeAt(50, 50);
     },
 
     pin: {
@@ -280,7 +283,12 @@ const ColorPicker = {
             // Get color form triangle cache
             //const tempCtx = ColorPicker.triangle.cache.getContext("2d")
             //selectedColor = tempCtx.getImageData(Math.floor(x), Math.floor(y), 1, 1).data()
-            ColorPicker.selectedColor = ColorPicker.ctx.getImageData(x, y, 1, 1).data;
+            ColorPicker.selectedColor = ColorPicker.ctx.getImageData(
+                x,
+                y,
+                1,
+                1,
+            ).data;
         },
     },
     triangle: {
@@ -424,15 +432,17 @@ const TypePolyline = {
         Object.assign(this, state);
     },
 
-    pointerDown(posX, posY) {
-        this.posX = posX;
-        this.posY = posY;
+    click(e) {
+        const { x, y } = getMousePos(e, this.dom);
+        const coords = ArtBoard.getGridCoords(x, y);
+        this.posX = coords.x;
+        this.posY = coords.y;
         this.lineDirection = null;
         this.curveDirection = null;
         this.isLineStarted = false;
         this.__arrowAngle = null;
 
-        this.__activateBlink(posX, posY, ColorPicker.selectedColor);
+        this.__activateBlink(this.posX, this.posY, ColorPicker.selectedColor);
 
         // Controle do Popup
         if (showTutorial) {
@@ -534,7 +544,11 @@ const TypePolyline = {
 
         // Paint sub-line
         while (true) {
-            ArtBoard.paintPixel(this.posX, this.posY, ColorPicker.selectedColor);
+            ArtBoard.paintPixel(
+                this.posX,
+                this.posY,
+                ColorPicker.selectedColor,
+            );
             paintedPixels++;
 
             if (paintedPixels < pixelsToPaint) {
@@ -627,21 +641,25 @@ const Pen = {
     lastX: null,
     lastY: null,
 
-    pointerDown(x, y) {
+    pointerDown(e) {
         History.saveState();
 
-        this.lastX = x;
-        this.lastY = y;
+        const { x, y } = getMousePos(e, this.dom);
+        const coords = ArtBoard.getGridCoords(x, y);
+        console.log(coords)
 
-        ArtBoard.paintPixel(x, y, ColorPicker.selectedColor);
+        this.lastX = coords.x;
+        this.lastY = coords.y;
+
+        ArtBoard.paintPixel(coords.x, coords.y, ColorPicker.selectedColor);
     },
     pointerMove(e) {
         if (this.lastX === null) return;
 
         let { x, y } = getMousePos(e, ArtBoard.dom);
         const coords = ArtBoard.getGridCoords(x, y);
-        x = coords.x 
-        y = coords.y
+        x = coords.x;
+        y = coords.y;
 
         if (x === this.lastX && y === this.lastY) return;
         this.drawLine(this.lastX, this.lastY, x, y);
@@ -683,8 +701,75 @@ const Pen = {
     },
 };
 const Bucket = {
-    
-}
+    LIMIT: 1000,
+
+    click(e) {
+        const { x, y } = getMousePos(e, ArtBoard.dom);
+        const coords = ArtBoard.getGridCoords(x, y);
+        
+        const startX = coords.x;
+        const startY = coords.y;
+        
+        const startKey = `${startX},${startY}`;
+        const targetColor = pixels.get(startKey) || null; 
+        const fillColor = rgbArrayToString(ColorPicker.selectedColor);
+
+        if (targetColor === fillColor) return;
+
+        const result = this.floodFill(startX, startY, targetColor, fillColor);
+
+        if (result.leacked) {
+            alert("A área não está fechada!")
+            return
+        }
+
+        History.saveState();
+        
+        result.toFill.forEach(([px, py]) => {
+            ArtBoard.paintPixel(px, py, ColorPicker.selectedColor);
+        });
+    },
+
+    floodFill(startX, startY, targetColor, fillColor) {
+        const stack = [[startX, startY]];
+        const visited = new Set();
+        const toFill = []
+
+        let leacked = false;
+
+        while (stack.length > 0) {
+            const [x, y] = stack.pop();
+            const key = `${x},${y}`;
+
+            if (visited.has(key)) continue;
+            if (Math.abs(x) > 2000 || Math.abs(y) > 2000) continue; 
+
+            const currentColor = pixels.get(key) || null;
+
+            if (x < -this.LIMIT || x > this.LIMIT ||
+                y < -this.LIMIT || y > this.LIMIT
+            ) {
+                leacked = true
+                continue
+            }
+
+            if (currentColor === targetColor) {
+                toFill.push([x, y])
+                visited.add(key);
+
+                stack.push([x + 1, y]);
+                stack.push([x - 1, y]);
+                stack.push([x, y + 1]);
+                stack.push([x, y - 1]);
+            }
+
+
+
+        }
+
+        return {toFill, leacked}
+    }
+};
 
 const History = {
     undoStack: [],
@@ -747,15 +832,15 @@ function windowKeyDown(e) {
     else if (e.ctrlKey && e.key === "y") History.redo();
 }
 function windowPointerMove(e) {
-    const artPos = getMousePos(e, ArtBoard.dom)
-    const colorPos = getMousePos(e, ColorPicker.dom)
+    const artPos = getMousePos(e, ArtBoard.dom);
+    const colorPos = getMousePos(e, ColorPicker.dom);
 
     if (ColorPicker.triangle.isPointInside(colorPos.x, colorPos.y)) {
-        Input.hoverTarget = "colorpicker"
-    }else if (ArtBoard.isPointInside(artPos.x, artPos.y)) {
-        Input.hoverTarget = "artboard"
+        Input.hoverTarget = "colorpicker";
+    } else if (ArtBoard.isPointInside(artPos.x, artPos.y)) {
+        Input.hoverTarget = "artboard";
     } else {
-        Input.hoverTarget = null
+        Input.hoverTarget = null;
     }
 
     // IF is pressing
@@ -816,24 +901,20 @@ function windowLoad(e) {
 const buttonMove = document.querySelector("button.move");
 const buttonTypePolyline = document.querySelector("button.type-polyline");
 const buttonPen = document.querySelector("button.tool.pen");
-buttonMove.addEventListener("click", handleMoveClick);
-buttonTypePolyline.addEventListener("click", handlePolylineClick);
-buttonPen.addEventListener("click", handlePenClick);
+const buttonBucket = document.querySelector("button.tool.bucket");
+
+buttonMove.addEventListener("click", (e) => handleClickTool(e, Move));
+buttonTypePolyline.addEventListener("click", (e) =>
+    handleClickTool(e, TypePolyline),
+);
+buttonPen.addEventListener("click", (e) => handleClickTool(e, Pen));
+buttonBucket.addEventListener("click", (e) => handleClickTool(e, Bucket));
 // TOOL BUTTONS EVENTS
-function handleMoveClick(e) {
-    unpressOtherButtons(e);
-    selectedTool = Move;
-}
-function handlePolylineClick(e) {
-    unpressOtherButtons(e);
-    selectedTool = TypePolyline;
-}
-function handlePenClick(e) {
-    unpressOtherButtons(e);
-    selectedTool = Pen;
-}
-function unpressOtherButtons(e) {
+
+function handleClickTool(e, tool) {
     const button = e.target;
+
+    selectedTool = tool;
 
     document.querySelectorAll(".tools-container button").forEach((b) => {
         if (b === button) return b.classList.add("pressed");
