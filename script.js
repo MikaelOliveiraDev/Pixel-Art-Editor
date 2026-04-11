@@ -22,7 +22,7 @@ const ArtBoard = {
 
     init() {
         // Canvas setting
-        this.dom.width = 600;
+        this.dom.width = 700;
         this.dom.height = 500;
         this.dom.tabIndex = 1;
 
@@ -51,7 +51,6 @@ const ArtBoard = {
         this.camera.scale *= delta;
         this.camera.x = x - (x - this.camera.x) * delta;
         this.camera.y = y - (y - this.camera.y) * delta;
-        console.log(this.camera.scale)
     },
 
     click(e) {
@@ -97,13 +96,11 @@ const ArtBoard = {
     },
 
     // Convert element coords into pixel coords
-    getGridCoords(relX, relY) {
-        //const rect = this.dom.getBoundingClientRect();
-        //const mouseX = clientX - rect.left;
-        //const mouseY = clientY - rect.top;
+    getGridCoords(coords) {
+        const { x, y } = coords;
 
-        const worldX = (relX - this.camera.x) / this.camera.scale;
-        const worldY = (relY - this.camera.y) / this.camera.scale;
+        const worldX = (x - this.camera.x) / this.camera.scale;
+        const worldY = (y - this.camera.y) / this.camera.scale;
 
         return {
             x: Math.floor(worldX / this.pixelSize),
@@ -111,8 +108,10 @@ const ArtBoard = {
         };
     },
 
-    paintPixel(x, y, color) {
-        if (!color) return
+    paintPixel(coords, color) {
+        if (!color) return;
+
+        const { x, y } = coords;
         const key = `${x},${y}`;
         pixels.set(key, rgbArrayToString(color));
     },
@@ -136,7 +135,7 @@ const ArtBoard = {
             startY + Math.ceil(dom.height / (camera.scale * pixelSize));
 
         // Draw Grid
-        const SHOW_HELPER_LINE_100 = camera.scale < .2
+        const SHOW_HELPER_LINE_100 = camera.scale < 0.2;
         for (let x = startX; x <= endX; x++) {
             if (x % 100 === 0 && SHOW_HELPER_LINE_100) {
                 // Helper lines on each 100 pixels
@@ -235,7 +234,6 @@ const ColorPicker = {
             ctx.stroke();
 
             ctx.restore();
-            console.log("Draw");
         },
 
         placeAt(rawX, rawY) {
@@ -375,7 +373,6 @@ const ColorPicker = {
             const ctx = ColorPicker.ctx;
             ctx.clearRect(0, 0, this.width, this.height);
             ctx.drawImage(this.cache, 0, 0);
-            console.log("Draw trigangel");
         },
     },
 
@@ -433,8 +430,7 @@ const TypePolyline = {
     },
 
     click(e) {
-        const { x, y } = getMousePos(e, this.dom);
-        const coords = ArtBoard.getGridCoords(x, y);
+        const coords = ArtBoard.getGridCoords(getMousePos(e, this.dom));
         this.posX = coords.x;
         this.posY = coords.y;
         this.lineDirection = null;
@@ -458,62 +454,167 @@ const TypePolyline = {
         this.arrowKeyDown(key);
     },
 
+    /* arrowKeyDown(key) {
+    if (this.posX === null || this.posY === null) return;
+
+    const direction = key.toLowerCase().replace("arrow", "");
+    const shortAngle = 14;
+
+    // Mapa de ângulos base
+    const baseAngles = {
+        right: 0,
+        down: 90,
+        left: 180,
+        up: 270
+    };
+
+    // 1. Se não temos uma direção, definimos a base
+    if (this.lineDirection === null) {
+        this.lineDirection = direction;
+        this.__arrowAngle = baseAngles[direction];
+        this.__arrowColor = "blue";
+        return;
+    }
+
+    // 2. Se já temos uma direção, a segunda tecla define a inclinação (Curva)
+    if (this.curveDirection === null) {
+        if (direction === this.lineDirection) return; // Mesma direção, não faz nada
+
+        this.curveDirection = direction;
+        const base = baseAngles[this.lineDirection];
+
+        // Lógica de combinação para calcular a inclinação
+        // Compara a direção da linha com a direção do passo (curva)
+        if (this.lineDirection === "right") {
+            if (direction === "down") this.__arrowAngle = base + shortAngle;
+            else if (direction === "up") this.__arrowAngle = base - shortAngle;
+            else if (direction === "left") this.reset(key); // Oposto: reseta
+        } 
+        else if (this.lineDirection === "down") {
+            if (direction === "left") this.__arrowAngle = base + shortAngle;
+            else if (direction === "right") this.__arrowAngle = base - shortAngle;
+            else if (direction === "up") this.reset(key);
+        } 
+        else if (this.lineDirection === "left") {
+            if (direction === "up") this.__arrowAngle = base + shortAngle;
+            else if (direction === "down") this.__arrowAngle = base - shortAngle;
+            else if (direction === "right") this.reset(key);
+        } 
+        else if (this.lineDirection === "up") {
+            if (direction === "right") this.__arrowAngle = base + shortAngle;
+            else if (direction === "left") this.__arrowAngle = base - shortAngle;
+            else if (direction === "down") this.reset(key);
+        }
+        
+        this.__arrowColor = "blue";
+        return;
+    }
+
+    // 3. Terceira tecla ou direção oposta: Reseta o estado para a nova direção
+    this.reset(key);
+}, */
+
     arrowKeyDown(key) {
         if (this.posX === null || this.posY === null) return;
 
         const direction = key.toLowerCase().replace("arrow", "");
 
-        // Fase 1: Definir a direção da linha
-        if (!this.lineDirection) {
+        // First keydown: set lineDirection
+        if (this.lineDirection === null) {
+            const ANGLES_MAP = {
+                right: 0,
+                down: 90,
+                left: 180,
+                up: 270,
+            };
             this.lineDirection = direction;
-
-            if (showTutorial)
-                applyTemporaryClass(".pop-up.type-number", "show", 3000);
-
-            const baseAngles = { right: 0, down: 90, left: 180, up: 270 };
-            this.__arrowAngle = baseAngles[direction];
+            this.__arrowAngle = ANGLES_MAP[direction];
             this.__arrowColor = "blue";
             return;
         }
 
-        // Fase 2: Definir a direção do passo (combinação)
-        if (!this.curveDirection) {
-            this.curveDirection = direction;
+        const SA = 14; // a short angle
+        const ANGLES_ON_RIGHT = [90, 90 - SA, 0 + SA, 0, 0 - SA, 270 + SA, 270];
+        const ANGLES_ON_BOTTOM = [
+            180,
+            180 - SA,
+            90 + SA,
+            90,
+            90 - SA,
+            0 + SA,
+            0,
+        ];
+        const ANGLES_ON_LEFT = [
+            90,
+            90 + SA,
+            180 - SA,
+            180,
+            180 + SA,
+            270 - SA,
+            270,
+        ];
+        const ANGLES_ON_TOP = [
+            180,
+            180 + SA,
+            270 - SA,
+            270,
+            270 + SA,
+            0 - SA,
+            0,
+        ];
 
-            const combo = `${this.lineDirection}-${this.curveDirection}`;
-            const combinations1 = [
-                "right-down",
-                "down-left",
-                "left-up",
-                "up-right",
-            ];
-            const combinations2 = [
-                "right-up",
-                "up-left",
-                "left-down",
-                "down-right",
-            ];
+        const jumpAngle = function (angles, clockwise) {
+            let index = angles.indexOf(this.__arrowAngle);
+            if (index === -1) return false;
 
-            if (combinations1.includes(combo)) {
-                this.__arrowAngle += 14;
-                this.__arrowColor = "blue";
-            } else if (combinations2.includes(combo)) {
-                this.__arrowAngle -= 14;
-                this.__arrowColor = "blue";
-            } else if (this.lineDirection === this.curveDirection) {
-                console.warn(
-                    "Não é possível usar a mesma direção para linha e passo.",
-                );
-            } else {
-                // opposite directions
-                this.reset(key);
-            }
+            const jump = clockwise ? 1 : -1;
+            const newAngle = angles[index + jump];
+            console.log(newAngle);
 
-            return;
+            if (newAngle !== undefined) this.__arrowAngle = newAngle;
+        }.bind(this);
+
+        // SECOND KEYDOWN: set arrowAngle
+        if (direction === "right") {
+            jumpAngle(ANGLES_ON_TOP, true) || jumpAngle(ANGLES_ON_BOTTOM, true);
+        } else if (direction === "down") {
+            jumpAngle(ANGLES_ON_RIGHT, false) ||
+                jumpAngle(ANGLES_ON_LEFT, false);
+        } else if (direction === "left") {
+            jumpAngle(ANGLES_ON_TOP, false) ||
+                jumpAngle(ANGLES_ON_BOTTOM, false);
+        } else {
+            jumpAngle(ANGLES_ON_RIGHT, true) || jumpAngle(ANGLES_ON_LEFT, true);
         }
 
-        // Fase 3: reset
-        this.reset(key);
+        // Set curveDirection
+        const ANGLES_DIRS_MAP = new Map([
+            [0 - SA, ["right", "up"]],
+            [0, ["right", null]],
+            [0 + SA, ["right", "down"]],
+
+            [90 - SA, ["down", "right"]],
+            [90, ["down", null]],
+            [90 + SA, ["down", "left"]],
+
+            [180 - SA, ["left", "down"]],
+            [180, ["left", null]],
+            [180 + SA, ["left", "up"]],
+
+            [270 - SA, ["up", "left"]],
+            [270, ["up", null]],
+            [270 + SA, ["up", "right"]],
+        ]);
+
+        const dir = ANGLES_DIRS_MAP.get(this.__arrowAngle);
+        if (!dir) return
+
+        this.lineDirection = dir[0];
+        this.curveDirection = dir[1];
+
+        console.log(this.lineDirection, this.curveDirection);
+
+        return;
     },
 
     numberKeyDown(key) {
@@ -545,8 +646,7 @@ const TypePolyline = {
         // Paint sub-line
         while (true) {
             ArtBoard.paintPixel(
-                this.posX,
-                this.posY,
+                { x: this.posX, y: this.posY },
                 ColorPicker.selectedColor,
             );
             paintedPixels++;
@@ -644,23 +744,17 @@ const Pen = {
     pointerDown(e) {
         History.saveState();
 
-        const { x, y } = getMousePos(e, this.dom);
-        const coords = ArtBoard.getGridCoords(x, y);
-        console.log(coords)
+        const coords = ArtBoard.getGridCoords(getMousePos(e, this.dom));
 
         this.lastX = coords.x;
         this.lastY = coords.y;
 
-        ArtBoard.paintPixel(coords.x, coords.y, ColorPicker.selectedColor);
+        ArtBoard.paintPixel(coords, ColorPicker.selectedColor);
     },
     pointerMove(e) {
         if (this.lastX === null) return;
 
-        let { x, y } = getMousePos(e, ArtBoard.dom);
-        const coords = ArtBoard.getGridCoords(x, y);
-        x = coords.x;
-        y = coords.y;
-
+        const { x, y } = ArtBoard.getGridCoords(getMousePos(e, ArtBoard.dom));
         if (x === this.lastX && y === this.lastY) return;
         this.drawLine(this.lastX, this.lastY, x, y);
 
@@ -682,7 +776,7 @@ const Pen = {
         let err = dx - dy;
 
         while (true) {
-            ArtBoard.paintPixel(x0, y0, ColorPicker.selectedColor);
+            ArtBoard.paintPixel({ x: x0, y: y0 }, ColorPicker.selectedColor);
 
             if (x0 === x1 && y0 === y1) break;
 
@@ -704,14 +798,13 @@ const Bucket = {
     LIMIT: 1000,
 
     click(e) {
-        const { x, y } = getMousePos(e, ArtBoard.dom);
-        const coords = ArtBoard.getGridCoords(x, y);
-        
+        const coords = ArtBoard.getGridCoords(getMousePos(e, ArtBoard.dom));
+
         const startX = coords.x;
         const startY = coords.y;
-        
+
         const startKey = `${startX},${startY}`;
-        const targetColor = pixels.get(startKey) || null; 
+        const targetColor = pixels.get(startKey) || null;
         const fillColor = rgbArrayToString(ColorPicker.selectedColor);
 
         if (targetColor === fillColor) return;
@@ -719,56 +812,56 @@ const Bucket = {
         const result = this.floodFill(startX, startY, targetColor, fillColor);
 
         if (result.leacked) {
-            alert("A área não está fechada!")
-            return
+            alert("A área não está fechada!");
+            return;
         }
 
         History.saveState();
-        
-        result.toFill.forEach(([px, py]) => {
-            ArtBoard.paintPixel(px, py, ColorPicker.selectedColor);
+
+        result.toFill.forEach((coords) => {
+            ArtBoard.paintPixel(coords, ColorPicker.selectedColor);
         });
     },
 
     floodFill(startX, startY, targetColor, fillColor) {
-        const stack = [[startX, startY]];
+        const stack = [{ x: startX, y: startY }];
         const visited = new Set();
-        const toFill = []
+        const toFill = [];
 
         let leacked = false;
 
         while (stack.length > 0) {
-            const [x, y] = stack.pop();
+            const { x, y } = stack.pop();
             const key = `${x},${y}`;
 
             if (visited.has(key)) continue;
-            if (Math.abs(x) > 2000 || Math.abs(y) > 2000) continue; 
+            if (Math.abs(x) > 2000 || Math.abs(y) > 2000) continue;
 
             const currentColor = pixels.get(key) || null;
 
-            if (x < -this.LIMIT || x > this.LIMIT ||
-                y < -this.LIMIT || y > this.LIMIT
+            if (
+                x < -this.LIMIT ||
+                x > this.LIMIT ||
+                y < -this.LIMIT ||
+                y > this.LIMIT
             ) {
-                leacked = true
-                continue
+                leacked = true;
+                continue;
             }
 
             if (currentColor === targetColor) {
-                toFill.push([x, y])
+                toFill.push({ x, y });
                 visited.add(key);
 
-                stack.push([x + 1, y]);
-                stack.push([x - 1, y]);
-                stack.push([x, y + 1]);
-                stack.push([x, y - 1]);
+                stack.push({ x: x + 1, y: y });
+                stack.push({ x: x - 1, y: y });
+                stack.push({ x: x, y: y + 1 });
+                stack.push({ x: x, y: y - 1 });
             }
-
-
-
         }
 
-        return {toFill, leacked}
-    }
+        return { toFill, leacked };
+    },
 };
 
 const History = {
@@ -879,7 +972,7 @@ function windowPointerUp(e) {
 
 function windowLoad(e) {
     // Select tool
-    document.querySelector("button.tool.pen").click();
+    document.querySelector("button.tool.type-polyline").click();
     ColorPicker.selectedColor = [0, 0, 0, 0];
 
     ArtBoard.init();
@@ -966,11 +1059,4 @@ function applyTemporaryClass(param0, className, time, className1) {
         element.classList.remove(className);
         if (className1) element.classList.add(className1);
     }, time);
-}
-function getMousePosRelative(e, element) {
-    const rect = element.getBoundingClientRect();
-    return {
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
-    };
 }
