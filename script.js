@@ -655,6 +655,7 @@ const Bucket = {
     },
 };
 
+// SAVING OBJECTS
 const History = {
     undoStack: [],
     redoStack: [],
@@ -702,6 +703,41 @@ const History = {
         this.undoStack.push(this.__takeSnapshot());
         this.__apply(this.redoStack.pop());
     },
+};
+const Storage = {
+    SAVE_KEY: "pixel_art_save",
+
+    save() {
+        const data = {
+            // Converte o Map em um Array de entradas [[key, value], ...]
+            pixels: Array.from(ArtBoard.pixels.entries()),
+            palette: ArtBoard.palette,
+            camera: ArtBoard.camera,
+            pixelSize: ArtBoard.pixelSize
+        };
+
+        try {
+            localStorage.setItem(this.SAVE_KEY, JSON.stringify(data));
+            console.log("Desenho salvo com sucesso!");
+        } catch (e) {
+            console.error("Falha ao salvar: possivelmente o desenho é grande demais para o localStorage", e);
+        }
+    },
+
+    load() {
+        const rawData = localStorage.getItem(this.SAVE_KEY);
+        if (!rawData) return false;
+
+        const data = JSON.parse(rawData);
+
+        // Restaura os pixels convertendo o Array de volta para Map
+        ArtBoard.pixels = new Map(data.pixels);
+        ArtBoard.palette = data.palette || [];
+        ArtBoard.camera = data.camera || ArtBoard.camera;
+        ArtBoard.pixelSize = data.pixelSize || ArtBoard.pixelSize;
+
+        return true;
+    }
 };
 
 // WINDOW EVENTS
@@ -773,6 +809,8 @@ function windowLoad(e) {
 
         requestAnimationFrame(renderLoop);
     }
+
+
 }
 
 // TOOL BUTTONS
