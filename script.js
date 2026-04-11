@@ -1,4 +1,3 @@
-const pixels = new Map();
 let selectedTool = null;
 let showTutorial = false;
 
@@ -12,6 +11,7 @@ const Input = {
 const ArtBoard = {
     dom: document.querySelector("canvas.canvas"),
     ctx: document.querySelector("canvas.canvas").getContext("2d"),
+    pixels: new Map([]),
     pixelSize: 20,
     lastMousePos: { x: null, y: null },
     camera: {
@@ -19,6 +19,7 @@ const ArtBoard = {
         y: 0,
         scale: 1,
     },
+    palette: [], // Array com string de cores ["rgb(0, 0, 0)"]
 
     init() {
         // Canvas setting
@@ -108,12 +109,26 @@ const ArtBoard = {
         };
     },
 
+    getColorIndex(color, add) {
+        const colorString = rgbArrayToString(color)
+        let index = this.palette.indexOf(colorString)
+
+        if (index === -1) {
+            if (!add) return 
+
+            this.palette.push(colorString)
+            index = this.palette.length - 1
+        }
+
+        return index
+    },
     paintPixel(coords, color) {
         if (!color) return;
 
         const { x, y } = coords;
         const key = `${x},${y}`;
-        pixels.set(key, rgbArrayToString(color));
+        const colorIndex = this.getColorIndex(color, true)
+        this.pixels.set(key, (colorIndex));
     },
 
     // Centraliza o desenho no canvas
@@ -175,9 +190,12 @@ const ArtBoard = {
         }
 
         // Desenha os pixels do Map global
-        pixels.forEach((color, key) => {
+        this.pixels.forEach((colorIndex, key) => {
             const [px, py] = key.split(",").map(Number);
-            ctx.fillStyle = color;
+
+            const actualColor = this.palette[colorIndex] || "darkgray"
+
+            ctx.fillStyle = actualColor;
             ctx.fillRect(px * pixelSize, py * pixelSize, pixelSize, pixelSize);
         });
 
@@ -286,65 +304,6 @@ const TypePolyline = {
         this.arrowKeyDown(key);
     },
 
-    /* arrowKeyDown(key) {
-    if (this.posX === null || this.posY === null) return;
-
-    const direction = key.toLowerCase().replace("arrow", "");
-    const shortAngle = 14;
-
-    // Mapa de ângulos base
-    const baseAngles = {
-        right: 0,
-        down: 90,
-        left: 180,
-        up: 270
-    };
-
-    // 1. Se não temos uma direção, definimos a base
-    if (this.lineDirection === null) {
-        this.lineDirection = direction;
-        this.__arrowAngle = baseAngles[direction];
-        this.__arrowColor = "blue";
-        return;
-    }
-
-    // 2. Se já temos uma direção, a segunda tecla define a inclinação (Curva)
-    if (this.curveDirection === null) {
-        if (direction === this.lineDirection) return; // Mesma direção, não faz nada
-
-        this.curveDirection = direction;
-        const base = baseAngles[this.lineDirection];
-
-        // Lógica de combinação para calcular a inclinação
-        // Compara a direção da linha com a direção do passo (curva)
-        if (this.lineDirection === "right") {
-            if (direction === "down") this.__arrowAngle = base + shortAngle;
-            else if (direction === "up") this.__arrowAngle = base - shortAngle;
-            else if (direction === "left") this.reset(key); // Oposto: reseta
-        } 
-        else if (this.lineDirection === "down") {
-            if (direction === "left") this.__arrowAngle = base + shortAngle;
-            else if (direction === "right") this.__arrowAngle = base - shortAngle;
-            else if (direction === "up") this.reset(key);
-        } 
-        else if (this.lineDirection === "left") {
-            if (direction === "up") this.__arrowAngle = base + shortAngle;
-            else if (direction === "down") this.__arrowAngle = base - shortAngle;
-            else if (direction === "right") this.reset(key);
-        } 
-        else if (this.lineDirection === "up") {
-            if (direction === "right") this.__arrowAngle = base + shortAngle;
-            else if (direction === "left") this.__arrowAngle = base - shortAngle;
-            else if (direction === "down") this.reset(key);
-        }
-        
-        this.__arrowColor = "blue";
-        return;
-    }
-
-    // 3. Terceira tecla ou direção oposta: Reseta o estado para a nova direção
-    this.reset(key);
-}, */
 
     arrowKeyDown(key) {
         if (this.posX === null || this.posY === null) return;
@@ -558,7 +517,7 @@ const TypePolyline = {
         this.isBlinking = true;
         this.__blinkColor = rgbArrayToString(color);
 
-        const constrastColor = "white";
+        const constrastColor = "rgb(255,255, 255)";
         let isContrastColor = false;
 
         this.__blinkInterval = setInterval(() => {
@@ -636,7 +595,7 @@ const Bucket = {
         const startY = coords.y;
 
         const startKey = `${startX},${startY}`;
-        const targetColor = pixels.get(startKey) || null;
+        const targetColor = ArtBoard.pixels.get(startKey) || null;
         const fillColor = rgbArrayToString(ColorPicker.selectedColor);
 
         if (targetColor === fillColor) return;
@@ -669,7 +628,7 @@ const Bucket = {
             if (visited.has(key)) continue;
             if (Math.abs(x) > 2000 || Math.abs(y) > 2000) continue;
 
-            const currentColor = pixels.get(key) || null;
+            const currentColor = ArtBoard.pixels.get(key) || null;
 
             if (
                 x < -this.LIMIT ||
@@ -703,15 +662,16 @@ const History = {
 
     __takeSnapshot() {
         return {
-            pixels: new Map(pixels),
+            pixels: new Map(ArtBoard.pixels),
+            palette: [...ArtBoard.palette],
             selectedTool: selectedTool,
             toolState: selectedTool?.getState?.(),
         };
     },
 
     __apply(snapshot) {
-        pixels.clear();
-        snapshot.pixels.forEach((color, key) => pixels.set(key, color));
+        ArtBoard.pixels.clear();
+        snapshot.pixels.forEach((color, key) => ArtBoard.pixels.set(key, color));
 
         selectedTool = snapshot.selectedTool;
 
@@ -800,7 +760,7 @@ function windowPointerUp(e) {
 
 function windowLoad(e) {
     // Select tool
-    document.querySelector("button.tool.type-polyline").click();
+    document.querySelector("button.tool.pen").click();
     ColorPicker.selectedColor = [0, 0, 0, 0];
 
     ArtBoard.init();
