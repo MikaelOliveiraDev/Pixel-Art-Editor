@@ -1,47 +1,51 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8">
-    <link rel="stylesheet" href="./style.css">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pen</title>
-  </head>
-  <body>
+    <head>
+        <meta charset="UTF-8" />
+        <link rel="stylesheet" href="./style.css" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Pen</title>
+    </head>
+    <body>
+        <div class="canvas-container">
+            <canvas class="canvas" tabindex="0"></canvas>
+
+            <div class="pop-up set-line-direction">
+                Use as teclas de setas para definir a direção da
+                <strong>linha</strong>.
+            </div>
+
+            <div class="pop-up type-number">
+                Digite o <strong>número</strong> de pixels nessa direção.<br />
+                Use "0" para inserir 10.
+            </div>
+            <div class="pop-up set-curve-direction">
+                Use as teclas de setas para definir a direção da
+                <strong>curva</strong>.
+            </div>
+        </div>
 
         <div>
-      <h3>Colors</h3>
-      <canvas class="color-picker"></canvas>
-    </div>
+            <h2>Tools</h2>
+            <div class="tools-container">
+                <button class="tool pen">Pen</button>
+                <button class="tool move" disabled>Move</button>
+                <button class="tool type-polyline">Type polyline</button>
+                <button class="tool bucket">Bucket</button>
+            </div>
+        </div>
+        <div>
+            <h3>Colors</h3>
 
-    <div class="canvas-container">
-      
-    <canvas class="canvas" tabindex="0"></canvas>
+            <label for="selected-color">Selected Color</label>
+            <input type="color" name="selected-color" id="selected-color">
 
-      <div class="pop-up set-line-direction">
-        Use as teclas de setas para definir a direção da <strong>linha</strong>.
-      </div>
+            <label>Recents</label>
+            <div class="recent-colors">
 
-      <div class="pop-up type-number">
-        Digite o <strong>número</strong> de pixels nessa direção.<br/>
-        Use "0" para inserir 10.
-      </div>
-      <div class="pop-up set-curve-direction">
-        Use as teclas de setas para definir a direção da <strong>curva</strong>.
-      </div>
-    </div>
-    
-    <div>
-      <h2>Tools</h2>
-      <div class="tools-container">
-          <button class="tool pen">Pen</button>
-        <button class="tool move" disabled>Move</button>
-        <button class="tool type-polyline">Type polyline</button>
-        <button class="tool bucket">Bucket</button>
-      </div>
-    </div>
+            </div>
+        </div>
 
-
-
-    <script src="./script.js"></script>
-  </body>
+        <script src="./script.js"></script>
+    </body>
 </html>

@@ -35,3 +35,49 @@
 canvas.color-picker {
     cursor: crosshair;
 }
+
+/* 1. Criamos uma classe base para o tamanho e forma */
+#selected-color, 
+.color-swatch {
+    width: 40px;
+    height: 40px;
+    border-radius: 4px; /* Use 50% se quiser círculos */
+    border: 2px solid #ddd;
+    cursor: pointer;
+    padding: 0;
+    display: inline-block;
+    vertical-align: middle;
+    transition: transform 0.1s ease;
+}
+
+/* 2. Removemos o estilo padrão do input de cor */
+#selected-color {
+    -webkit-appearance: none; /* Remove bordas internas no Chrome */
+    background: none;
+}
+
+/* 3. Estilizando a "caixa de cor" interna do input (Chrome/Safari/Edge) */
+#selected-color::-webkit-color-swatch {
+    border: none;
+    border-radius: 2px;
+}
+
+/* 4. Estilizando a "caixa de cor" interna do input (Firefox) */
+#selected-color::-moz-color-swatch {
+    border: none;
+    border-radius: 2px;
+}
+
+/* 5. Feedback visual ao passar o mouse */
+#selected-color:hover,
+.color-swatch:hover {
+    transform: scale(1.1);
+    border-color: #888;
+}
+
+/* Layout do container de recentes */
+.recent-colors {
+    display: flex;
+    gap: 8px;
+    margin-top: 5px;
+}

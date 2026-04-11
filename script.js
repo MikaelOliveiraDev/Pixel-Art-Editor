@@ -186,216 +186,48 @@ const ArtBoard = {
     },
 };
 const ColorPicker = {
-    dom: document.querySelector("canvas.color-picker"),
-    ctx: document
-        .querySelector("canvas.color-picker")
-        .getContext("2d", { willReadFrequently: true }),
-    selectedColor: null,
+    dom: document.querySelector("input#selected-color"),
+    selectedColor: [0, 0, 0],
+    MAX_RECENT_COLORS: 15,
 
     init() {
-        this.dom.addEventListener("pointerdown", this.pointerDown.bind(this));
-        this.pin.placeAt(50, 50);
+        this.dom.addEventListener("change", this.change.bind(this))
     },
 
-    pin: {
-        x: null,
-        y: null,
-        radius: 10,
+    change(e) {
+        const value = this.dom.value
+        // Create recent color
+        const container = document.querySelector(".recent-colors")
 
-        draw() {
-            if (this.x === null || this.y === null) return;
+        const swatch = document.createElement("div")
+        swatch.className = "color-swatch"
+        swatch.style.backgroundColor = value
+        swatch.dataset.color = value
 
-            const { dom, ctx } = ColorPicker;
+        swatch.addEventListener("click", () => {
+            ColorPicker.dom.value = value
+            ColorPicker.selectedColor = ColorPicker.hexToRgb(value)
+        })
 
-            ctx.save();
+        container.prepend(swatch)
+        if (container.children.length > this.MAX_RECENT_COLORS) {
+            container.removeChild(container.lastChild)
+        }
 
-            ctx.beginPath();
-            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        // Define color
+        this.selectedColor = this.hexToRgb(value)
 
-            // Convert color array to string
-            const r = ColorPicker.selectedColor[0];
-            const g = ColorPicker.selectedColor[1];
-            const b = ColorPicker.selectedColor[2];
-
-            ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-            ctx.fill();
-
-            // Outline
-            ctx.strokeStyle = "white";
-            ctx.lineWidth = 2;
-            ctx.stroke();
-
-            // Opcional: Adicionar um segundo outline preto bem fininho por fora
-            // garante visibilidade total se o fundo for branco puro
-            ctx.beginPath();
-            ctx.arc(this.x, this.y, this.radius + 1, 0, Math.PI * 2);
-            ctx.strokeStyle = "black";
-            ctx.lineWidth = 0.5;
-            ctx.stroke();
-
-            ctx.restore();
-        },
-
-        placeAt(rawX, rawY) {
-            const { width, height } = ColorPicker.triangle;
-
-            let x = Math.max(0, Math.min(rawX, width));
-            let y = Math.max(0, Math.min(rawY, height));
-
-            // Topo (Cor Pura)
-            const ax = width / 2;
-            const ay = 0;
-            // Esquerda (Preto)
-            const bx = 0;
-            const by = height;
-            // Direita (Branco)
-            const cx = width;
-            const cy = height;
-
-            const denom = (by - cy) * (ax - cx) + (cx - bx) * (ay - cy);
-            let w1 = ((by - cy) * (x - cx) + (cx - bx) * (y - cy)) / denom;
-            let w2 = ((cy - ay) * (x - cx) + (ax - cx) * (y - cy)) / denom;
-            let w3 = 1 - w1 - w2;
-            const pixel = ColorPicker.ctx.getImageData(x, y, 1, 1).data;
-
-            if (w1 < 0 || w2 < 0 || w3 < 0) {
-                w1 = Math.max(0, Math.min(1, w1));
-                w2 = Math.max(0, Math.min(1, w2));
-                w3 = Math.max(0, Math.min(1, w3));
-
-                // Normalizar para que a soma seja 1
-                const sum = w1 + w2 + w3;
-                w1 /= sum;
-                w2 /= sum;
-                w3 /= sum;
-
-                // Recalcular X e Y baseados nos pesos limitados
-                x = w1 * ax + w2 * bx + w3 * cx;
-                y = w1 * ay + w2 * by + w3 * cy;
-            }
-
-            // Set color pin positions
-            this.x = x;
-            this.y = y;
-
-            // Get color form triangle cache
-            //const tempCtx = ColorPicker.triangle.cache.getContext("2d")
-            //selectedColor = tempCtx.getImageData(Math.floor(x), Math.floor(y), 1, 1).data()
-            ColorPicker.selectedColor = ColorPicker.ctx.getImageData(
-                x,
-                y,
-                1,
-                1,
-            ).data;
-        },
-    },
-    triangle: {
-        width: 200,
-        height: 200,
-        cache: null, // save img data
-        lastHue: null,
-        isHovering: false,
-        isPointInside(x, y) {
-            const { width, height } = this;
-
-            // Vertices (mesmos usados no render)
-            const ax = width / 2,
-                ay = 0;
-            const bx = 0,
-                by = height;
-            const cx = width,
-                cy = height;
-
-            const denom = (by - cy) * (ax - cx) + (cx - bx) * (ay - cy);
-            const w1 = ((by - cy) * (x - cx) + (cx - bx) * (y - cy)) / denom;
-            const w2 = ((cy - ay) * (x - cx) + (ax - cx) * (y - cy)) / denom;
-            const w3 = 1 - w1 - w2;
-
-            // Se todos os pesos forem positivos, o ponto está dentro
-            return w1 >= 0 && w2 >= 0 && w3 >= 0;
-        },
-
-        render(hue) {
-            if (this.lastHue === hue) return;
-
-            this.lastHue = hue;
-            const tempCanvas = document.createElement("canvas");
-            tempCanvas.width = this.width;
-            tempCanvas.height = this.height;
-            const tempCtx = tempCanvas.getContext("2d");
-
-            const img = tempCtx.createImageData(this.width, this.height);
-            const pureColor = hslToRgb([hue, 100, 50]);
-
-            // Vertices
-            const ax = this.width / 2,
-                ay = 0;
-            const bx = 0,
-                by = this.height;
-            const cx = this.width,
-                cy = this.height;
-            const denom = (by - cy) * (ax - cx) + (cx - bx) * (ay - cy);
-
-            const white = [255, 255, 255];
-            const black = [0, 0, 0];
-
-            for (let y = 0; y < this.height; y++) {
-                for (let x = 0; x < this.width; x++) {
-                    const i = (y * this.width + x) * 4;
-
-                    const w1 =
-                        ((by - cy) * (x - cx) + (cx - bx) * (y - cy)) / denom;
-                    const w2 =
-                        ((cy - ay) * (x - cx) + (ax - cx) * (y - cy)) / denom;
-                    const w3 = 1 - w1 - w2;
-
-                    if (w1 >= 0 && w2 >= 0 && w3 >= 0) {
-                        img.data[i] =
-                            w1 * pureColor[0] + w2 * black[0] + w3 * white[0];
-                        img.data[i + 1] =
-                            w1 * pureColor[1] + w2 * black[1] + w3 * white[1];
-                        img.data[i + 2] =
-                            w1 * pureColor[2] + w2 * black[2] + w3 * white[2];
-                        img.data[i + 3] = 255;
-                    } else {
-                        img.data[i + 3] = 0;
-                    }
-                }
-            }
-
-            tempCtx.putImageData(img, 0, 0);
-            this.cache = tempCanvas;
-        },
-
-        draw() {
-            if (!this.cache) return;
-
-            const ctx = ColorPicker.ctx;
-            ctx.clearRect(0, 0, this.width, this.height);
-            ctx.drawImage(this.cache, 0, 0);
-        },
+        console.log(e)
     },
 
-    pointerDown(e) {
-        Input.activeTarget = "colorpicker";
-        Input.pointerId = e.pointerId;
-        Input.isPointerDown = true;
-
-        this.dom.setPointerCapture(e.pointerId);
-
-        const pos = getMousePos(e, this.dom);
-        this.pin.placeAt(pos.x, pos.y);
-        this.triangle.draw();
-        this.pin.draw();
+    hexToRgb(hex) {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return [r, g, b];
     },
-    pointerMove(e) {
-        const { x, y } = getMousePos(e, this.dom);
 
-        this.triangle.draw();
-        this.pin.placeAt(x, y);
-        this.pin.draw();
-    },
-    pointerUp() {},
+    draw() {} 
 };
 
 // TOOLS OBJECTS
@@ -926,11 +758,9 @@ function windowKeyDown(e) {
 }
 function windowPointerMove(e) {
     const artPos = getMousePos(e, ArtBoard.dom);
-    const colorPos = getMousePos(e, ColorPicker.dom);
 
-    if (ColorPicker.triangle.isPointInside(colorPos.x, colorPos.y)) {
-        Input.hoverTarget = "colorpicker";
-    } else if (ArtBoard.isPointInside(artPos.x, artPos.y)) {
+
+    if (ArtBoard.isPointInside(artPos.x, artPos.y)) {
         Input.hoverTarget = "artboard";
     } else {
         Input.hoverTarget = null;
@@ -941,9 +771,7 @@ function windowPointerMove(e) {
         if (Input.activeTarget === "artboard") {
             ArtBoard.pointerMove(e);
             selectedTool.pointerMove?.(e);
-        } else if (Input.activeTarget === "colorpicker") {
-            ColorPicker.pointerMove(e);
-        }
+        } 
     }
 }
 function windowPointerUp(e) {
@@ -977,9 +805,6 @@ function windowLoad(e) {
 
     ArtBoard.init();
     ColorPicker.init();
-    ColorPicker.triangle.render(0);
-    ColorPicker.triangle.draw();
-    ColorPicker.pin.draw();
 
     renderLoop();
 
@@ -1014,6 +839,7 @@ function handleClickTool(e, tool) {
         b.classList.remove("pressed");
     });
 }
+
 
 // UTILITY FUNCTIONS
 function hslToRgb([h, s, l]) {
