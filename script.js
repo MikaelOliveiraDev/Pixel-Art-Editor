@@ -203,6 +203,52 @@ const ArtBoard = {
         // Desenha o feedback da ferramenta selecionada
         selectedTool?.draw?.(ctx);
     },
+
+    exportAsPNG(scale) {
+        // 1. Encontrar os limites do desenho (para não salvar um canvas infinito)
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        
+        if (this.pixels.size === 0) return alert("O desenho está vazio!");
+
+        this.pixels.forEach((_, key) => {
+            const [x, y] = key.split(",").map(Number);
+            minX = Math.min(minX, x);
+            minY = Math.min(minY, y);
+            maxX = Math.max(maxX, x);
+            maxY = Math.max(maxY, y);
+        });
+
+        // 2. Criar um canvas temporário do tamanho exato do desenho
+        const tempCanvas = document.createElement("canvas");
+        const tempCtx = tempCanvas.getContext("2d");
+        
+        const width = (maxX - minX + 1);
+        const height = (maxY - minY + 1);
+        
+        const exportScale = this.pixelSize; 
+        tempCanvas.width = width * scale;
+        tempCanvas.height = height * scale;
+
+        // 3. Desenhar os pixels no canvas temporário
+        this.pixels.forEach((colorIndex, key) => {
+            const [x, y] = key.split(",").map(Number);
+            const actualColor = this.palette[colorIndex] || "transparent";
+            
+            tempCtx.fillStyle = actualColor;
+            tempCtx.fillRect(
+                (x - minX) * scale, 
+                (y - minY) * scale, 
+                scale, 
+                scale
+            );
+        });
+
+        // 4. Transformar em imagem e baixar
+        const link = document.createElement("a");
+        link.download = "minha-pixelart.png";
+        link.href = tempCanvas.toDataURL("image/png");
+        link.click();
+    }
 };
 const ColorPicker = {
     dom: document.querySelector("input#selected-color"),
@@ -744,6 +790,8 @@ window.addEventListener("keydown", windowKeyDown);
 function windowKeyDown(e) {
     if (e.key === "m") buttonMove.click();
     else if (e.key === "d") buttonTypePolyline.click();
+    else if (e.key === "b") buttonBucket.click()
+    else if (e.key === "p") buttonPen.click()
     else if (e.ctrlKey && e.key === "z") History.undo();
     else if (e.ctrlKey && e.key === "y") History.redo();
 }
@@ -811,6 +859,8 @@ function windowLoad(e) {
     setInterval(() => {
         Storage.save()
     }, autoSaveIntervalSec * 1000);
+
+    document.querySelector("button#download").addEventListener("click", () => ArtBoard.exportAsPNG(1))
 }
 
 // TOOL BUTTONS
