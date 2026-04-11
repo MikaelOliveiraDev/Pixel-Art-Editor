@@ -1,5 +1,6 @@
 let selectedTool = null;
 let showTutorial = false;
+let autoSaveIntervalSec = 20
 
 const Input = {
     activeTarget: null, // "artboard" | "colorpicker"
@@ -810,7 +811,12 @@ function windowLoad(e) {
         requestAnimationFrame(renderLoop);
     }
 
-
+    // Try to restore
+    Storage.load()
+    // Save in an interval
+    setInterval(() => {
+        Storage.save()
+    }, autoSaveIntervalSec * 1000);
 }
 
 // TOOL BUTTONS
