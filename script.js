@@ -596,15 +596,15 @@ const Bucket = {
         const startY = coords.y;
 
         const startKey = `${startX},${startY}`;
-        const targetColor = ArtBoard.pixels.get(startKey) || null;
-        const fillColor = rgbArrayToString(ColorPicker.selectedColor);
+        const targetColorIndex = ArtBoard.pixels.get(startKey);
+        const fillColorIndex = ArtBoard.getColorIndex(ColorPicker.selectedColor, true);
 
-        if (targetColor === fillColor) return;
+        if (targetColorIndex === fillColorIndex) return;
 
-        const result = this.floodFill(startX, startY, targetColor, fillColor);
+        const result = this.floodFill(startX, startY, targetColorIndex);
 
         if (result.leacked) {
-            alert("A área não está fechada!");
+            alert("A área não está fechada ou é muito grande!");
             return;
         }
 
@@ -615,7 +615,7 @@ const Bucket = {
         });
     },
 
-    floodFill(startX, startY, targetColor, fillColor) {
+    floodFill(startX, startY, targetColorIndex) {
         const stack = [{ x: startX, y: startY }];
         const visited = new Set();
         const toFill = [];
@@ -627,21 +627,15 @@ const Bucket = {
             const key = `${x},${y}`;
 
             if (visited.has(key)) continue;
-            if (Math.abs(x) > 2000 || Math.abs(y) > 2000) continue;
-
-            const currentColor = ArtBoard.pixels.get(key) || null;
-
-            if (
-                x < -this.LIMIT ||
-                x > this.LIMIT ||
-                y < -this.LIMIT ||
-                y > this.LIMIT
-            ) {
-                leacked = true;
+            if ((visited.size > 50000) || Math.abs(x) > 2000 || Math.abs(y) > 2000) {
+                leacked = true
                 continue;
             }
 
-            if (currentColor === targetColor) {
+            const currentColorIndex = ArtBoard.pixels.get(key)
+            console.log(key, currentColorIndex, targetColorIndex)
+
+            if (currentColorIndex === targetColorIndex) {
                 toFill.push({ x, y });
                 visited.add(key);
 
