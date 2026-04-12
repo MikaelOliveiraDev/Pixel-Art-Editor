@@ -1,5 +1,3 @@
-
-
 let selectedTool = null;
 let showTutorial = false;
 let autoSaveIntervalSec = 20;
@@ -207,7 +205,7 @@ const ArtBoard = {
         selectedTool?.draw?.(ctx);
     },
 
-    exportAsPNG(scale) {
+    exportAsPNG(scale = 1, download = true) {
         // 1. Encontrar os limites do desenho (para não salvar um canvas infinito)
         let minX = Infinity,
             minY = Infinity,
@@ -250,10 +248,14 @@ const ArtBoard = {
         });
 
         // 4. Transformar em imagem e baixar
-        const link = document.createElement("a");
-        link.download = "minha-pixelart.png";
-        link.href = tempCanvas.toDataURL("image/png");
-        link.click();
+        if (download) {
+            const link = document.createElement("a");
+            link.download = "minha-pixelart.png";
+            link.href = tempCanvas.toDataURL("image/png");
+            link.click();
+        } else {
+            return tempCanvas.toDataURL("image/png");
+        }
     },
 };
 const ColorPicker = {
@@ -713,13 +715,13 @@ const Project = {
     name: null,
 
     createNew() {
-        const now = new Date().toISOString().split(".")[0].replace(/:/g, '-')
-        this.name = "Untitled-"+now
+        const now = new Date().toISOString().split(".")[0].replace(/:/g, "-");
+        this.name = "Untitled-" + now;
 
-        Storage.save()
-        location.href="/edit.html?name="+this.name
-    }
-}
+        Storage.save();
+        location.href = "/edit.html?name=" + this.name;
+    },
+};
 
 const History = {
     undoStack: [],
@@ -772,9 +774,9 @@ const History = {
     },
 };
 const Storage = {
-
     save() {
-        const SAVE_KEY = Project.name
+        const SAVE_KEY = Project.name;
+        if (!SAVE_KEY) return console.error("Projeto sem nome!");
 
         const data = {
             // Converte o Map em um Array de entradas [[key, value], ...]
@@ -782,15 +784,18 @@ const Storage = {
             palette: ArtBoard.palette,
             camera: ArtBoard.camera,
             pixelSize: ArtBoard.pixelSize,
+            dataURL: ArtBoard.exportAsPNG(1, false),
         };
-        
-        const projectsListJSON = localStorage.getItem("projects") || "[]"
-        const projectsList = JSON.parse(projectsListJSON)
-        projectsList.push(SAVE_KEY)
+
+        const projectsListJSON = localStorage.getItem("projects") || "[]";
+        const projectsList = JSON.parse(projectsListJSON);
+        if (!projectsList.includes(SAVE_KEY)) {
+            projectsList.push(SAVE_KEY);
+            localStorage.setItem("projects", JSON.stringify(projectsList));
+        }
 
         try {
             localStorage.setItem(SAVE_KEY, JSON.stringify(data));
-            localStorage.setItem("projects", JSON.stringify(projectsList))
             console.log(`Desenho salvo com sucesso em ${SAVE_KEY}!`);
         } catch (e) {
             console.error(
@@ -801,7 +806,7 @@ const Storage = {
     },
 
     load(name) {
-        const rawData = localStorage.getItem(this.SAVE_KEY);
+        const rawData = localStorage.getItem(name);
         if (!rawData) return false;
 
         const data = JSON.parse(rawData);
@@ -888,16 +893,20 @@ function windowLoad(e) {
     }
 
     // Get project name
-    const queryString = window.location.search
-    const urlParams = new URLSearchParams(queryString)
-    Project.name = urlParams.get('name')
-    
-    // Try to restore
-    if (Project.name) 
-        Storage.load();
-    else 
-        Project.createNew()
-        
+    const queryString = window.location.search;
+    const urlParams = new URLSearchParams(queryString);
+    const nameFromURL = urlParams.get("name");
+
+    if (nameFromURL && nameFromURL.trim() !== "") {
+        Project.name = nameFromURL;
+        const loaded = Storage.load(Project.name);
+
+        if (!loaded) {
+            console.warn("Project not found in local storage");
+        }
+    } else {
+        Project.createNew();
+    }
 
     // Save in an interval
     setInterval(() => {
@@ -907,6 +916,12 @@ function windowLoad(e) {
     document
         .querySelector("button#download")
         .addEventListener("click", () => ArtBoard.exportAsPNG(1));
+    document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "hidden") {
+            Storage.save();
+            console.log("Salvamento preventivo: usuário saiu da aba.");
+        }
+    });
 }
 
 // TOOL BUTTONS

@@ -119,16 +119,23 @@
         const projectsList = JSON.parse(localStorage.getItem("projects") || "[]")
 
         projectsList.forEach(projectName => {
+            const projectData = JSON.parse(localStorage.getItem(projectName))
+
             const templ = document.querySelector('.projects-container template')
             const clone = templ.content.cloneNode(true)
 
             const projectEl = clone.querySelector(".project")
+            const titleEl = clone.querySelector("h3")
+            const imgEl = clone.querySelector("img")
 
-            projectEl.querySelector("h3").innerText = projectName
 
             projectEl.onclick = () => {
                 location.href = `/edit.html?name=${projectName}`
             }
+            titleEl.innerText = projectName
+
+            if (projectData.dataURL)
+            imgEl.src = projectData.dataURL
 
             document.querySelector(".projects-container").appendChild(clone)
         });
