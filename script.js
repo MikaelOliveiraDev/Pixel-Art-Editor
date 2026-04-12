@@ -1,6 +1,8 @@
+
+
 let selectedTool = null;
 let showTutorial = false;
-let autoSaveIntervalSec = 20
+let autoSaveIntervalSec = 20;
 
 const Input = {
     activeTarget: null, // "artboard" | "colorpicker"
@@ -89,8 +91,9 @@ const ArtBoard = {
 
         this.lastMousePos = { x, y };
     },
-    pointerUp() {
+    pointerUp(e) {
         this.lastMousePos = { x: null, y: null };
+        this.dom.style.cursor = "default";
     },
 
     isPointInside(x, y) {
@@ -111,25 +114,25 @@ const ArtBoard = {
     },
 
     getColorIndex(color, add) {
-        const colorString = rgbArrayToString(color)
-        let index = this.palette.indexOf(colorString)
+        const colorString = rgbArrayToString(color);
+        let index = this.palette.indexOf(colorString);
 
         if (index === -1) {
-            if (!add) return 
+            if (!add) return;
 
-            this.palette.push(colorString)
-            index = this.palette.length - 1
+            this.palette.push(colorString);
+            index = this.palette.length - 1;
         }
 
-        return index
+        return index;
     },
     paintPixel(coords, color) {
         if (!color) return;
 
         const { x, y } = coords;
         const key = `${x},${y}`;
-        const colorIndex = this.getColorIndex(color, true)
-        this.pixels.set(key, (colorIndex));
+        const colorIndex = this.getColorIndex(color, true);
+        this.pixels.set(key, colorIndex);
     },
 
     // Centraliza o desenho no canvas
@@ -194,7 +197,7 @@ const ArtBoard = {
         this.pixels.forEach((colorIndex, key) => {
             const [px, py] = key.split(",").map(Number);
 
-            const actualColor = this.palette[colorIndex] || "darkgray"
+            const actualColor = this.palette[colorIndex] || "darkgray";
 
             ctx.fillStyle = actualColor;
             ctx.fillRect(px * pixelSize, py * pixelSize, pixelSize, pixelSize);
@@ -206,8 +209,11 @@ const ArtBoard = {
 
     exportAsPNG(scale) {
         // 1. Encontrar os limites do desenho (para não salvar um canvas infinito)
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-        
+        let minX = Infinity,
+            minY = Infinity,
+            maxX = -Infinity,
+            maxY = -Infinity;
+
         if (this.pixels.size === 0) return alert("O desenho está vazio!");
 
         this.pixels.forEach((_, key) => {
@@ -221,11 +227,11 @@ const ArtBoard = {
         // 2. Criar um canvas temporário do tamanho exato do desenho
         const tempCanvas = document.createElement("canvas");
         const tempCtx = tempCanvas.getContext("2d");
-        
-        const width = (maxX - minX + 1);
-        const height = (maxY - minY + 1);
-        
-        const exportScale = this.pixelSize; 
+
+        const width = maxX - minX + 1;
+        const height = maxY - minY + 1;
+
+        const exportScale = this.pixelSize;
         tempCanvas.width = width * scale;
         tempCanvas.height = height * scale;
 
@@ -233,13 +239,13 @@ const ArtBoard = {
         this.pixels.forEach((colorIndex, key) => {
             const [x, y] = key.split(",").map(Number);
             const actualColor = this.palette[colorIndex] || "transparent";
-            
+
             tempCtx.fillStyle = actualColor;
             tempCtx.fillRect(
-                (x - minX) * scale, 
-                (y - minY) * scale, 
-                scale, 
-                scale
+                (x - minX) * scale,
+                (y - minY) * scale,
+                scale,
+                scale,
             );
         });
 
@@ -248,7 +254,7 @@ const ArtBoard = {
         link.download = "minha-pixelart.png";
         link.href = tempCanvas.toDataURL("image/png");
         link.click();
-    }
+    },
 };
 const ColorPicker = {
     dom: document.querySelector("input#selected-color"),
@@ -256,33 +262,33 @@ const ColorPicker = {
     MAX_RECENT_COLORS: 15,
 
     init() {
-        this.dom.addEventListener("change", this.change.bind(this))
+        this.dom.addEventListener("change", this.change.bind(this));
     },
 
     change(e) {
-        const value = this.dom.value
+        const value = this.dom.value;
         // Create recent color
-        const container = document.querySelector(".recent-colors")
+        const container = document.querySelector(".recent-colors");
 
-        const swatch = document.createElement("div")
-        swatch.className = "color-swatch"
-        swatch.style.backgroundColor = value
-        swatch.dataset.color = value
+        const swatch = document.createElement("div");
+        swatch.className = "color-swatch";
+        swatch.style.backgroundColor = value;
+        swatch.dataset.color = value;
 
         swatch.addEventListener("click", () => {
-            ColorPicker.dom.value = value
-            ColorPicker.selectedColor = ColorPicker.hexToRgb(value)
-        })
+            ColorPicker.dom.value = value;
+            ColorPicker.selectedColor = ColorPicker.hexToRgb(value);
+        });
 
-        container.prepend(swatch)
+        container.prepend(swatch);
         if (container.children.length > this.MAX_RECENT_COLORS) {
-            container.removeChild(container.lastChild)
+            container.removeChild(container.lastChild);
         }
 
         // Define color
-        this.selectedColor = this.hexToRgb(value)
+        this.selectedColor = this.hexToRgb(value);
 
-        console.log(e)
+        console.log(e);
     },
 
     hexToRgb(hex) {
@@ -292,7 +298,7 @@ const ColorPicker = {
         return [r, g, b];
     },
 
-    draw() {} 
+    draw() {},
 };
 
 // TOOLS OBJECTS
@@ -350,7 +356,6 @@ const TypePolyline = {
         this.__arrowColor = "red";
         this.arrowKeyDown(key);
     },
-
 
     arrowKeyDown(key) {
         if (this.posX === null || this.posY === null) return;
@@ -445,7 +450,7 @@ const TypePolyline = {
         ]);
 
         const dir = ANGLES_DIRS_MAP.get(this.__arrowAngle);
-        if (!dir) return
+        if (!dir) return;
 
         this.lineDirection = dir[0];
         this.curveDirection = dir[1];
@@ -643,7 +648,10 @@ const Bucket = {
 
         const startKey = `${startX},${startY}`;
         const targetColorIndex = ArtBoard.pixels.get(startKey);
-        const fillColorIndex = ArtBoard.getColorIndex(ColorPicker.selectedColor, true);
+        const fillColorIndex = ArtBoard.getColorIndex(
+            ColorPicker.selectedColor,
+            true,
+        );
 
         if (targetColorIndex === fillColorIndex) return;
 
@@ -673,13 +681,17 @@ const Bucket = {
             const key = `${x},${y}`;
 
             if (visited.has(key)) continue;
-            if ((visited.size > 50000) || Math.abs(x) > 2000 || Math.abs(y) > 2000) {
-                leacked = true
+            if (
+                visited.size > 50000 ||
+                Math.abs(x) > 2000 ||
+                Math.abs(y) > 2000
+            ) {
+                leacked = true;
                 continue;
             }
 
-            const currentColorIndex = ArtBoard.pixels.get(key)
-            console.log(key, currentColorIndex, targetColorIndex)
+            const currentColorIndex = ArtBoard.pixels.get(key);
+            console.log(key, currentColorIndex, targetColorIndex);
 
             if (currentColorIndex === targetColorIndex) {
                 toFill.push({ x, y });
@@ -697,6 +709,18 @@ const Bucket = {
 };
 
 // SAVING OBJECTS
+const Project = {
+    name: null,
+
+    createNew() {
+        const now = new Date().toISOString().split(".")[0].replace(/:/g, '-')
+        this.name = "Untitled-"+now
+
+        Storage.save()
+        location.href="/edit.html?name="+this.name
+    }
+}
+
 const History = {
     undoStack: [],
     redoStack: [],
@@ -713,7 +737,9 @@ const History = {
 
     __apply(snapshot) {
         ArtBoard.pixels.clear();
-        snapshot.pixels.forEach((color, key) => ArtBoard.pixels.set(key, color));
+        snapshot.pixels.forEach((color, key) =>
+            ArtBoard.pixels.set(key, color),
+        );
 
         selectedTool = snapshot.selectedTool;
 
@@ -746,26 +772,35 @@ const History = {
     },
 };
 const Storage = {
-    SAVE_KEY: "pixel_art_save",
 
     save() {
+        const SAVE_KEY = Project.name
+
         const data = {
             // Converte o Map em um Array de entradas [[key, value], ...]
             pixels: Array.from(ArtBoard.pixels.entries()),
             palette: ArtBoard.palette,
             camera: ArtBoard.camera,
-            pixelSize: ArtBoard.pixelSize
+            pixelSize: ArtBoard.pixelSize,
         };
+        
+        const projectsListJSON = localStorage.getItem("projects") || "[]"
+        const projectsList = JSON.parse(projectsListJSON)
+        projectsList.push(SAVE_KEY)
 
         try {
-            localStorage.setItem(this.SAVE_KEY, JSON.stringify(data));
-            console.log("Desenho salvo com sucesso!");
+            localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+            localStorage.setItem("projects", JSON.stringify(projectsList))
+            console.log(`Desenho salvo com sucesso em ${SAVE_KEY}!`);
         } catch (e) {
-            console.error("Falha ao salvar: possivelmente o desenho é grande demais para o localStorage", e);
+            console.error(
+                "Falha ao salvar: possivelmente o desenho é grande demais para o localStorage",
+                e,
+            );
         }
     },
 
-    load() {
+    load(name) {
         const rawData = localStorage.getItem(this.SAVE_KEY);
         if (!rawData) return false;
 
@@ -778,7 +813,7 @@ const Storage = {
         ArtBoard.pixelSize = data.pixelSize || ArtBoard.pixelSize;
 
         return true;
-    }
+    },
 };
 
 // WINDOW EVENTS
@@ -790,14 +825,13 @@ window.addEventListener("keydown", windowKeyDown);
 function windowKeyDown(e) {
     if (e.key === "m") buttonMove.click();
     else if (e.key === "d") buttonTypePolyline.click();
-    else if (e.key === "b") buttonBucket.click()
-    else if (e.key === "p") buttonPen.click()
+    else if (e.key === "b") buttonBucket.click();
+    else if (e.key === "p") buttonPen.click();
     else if (e.ctrlKey && e.key === "z") History.undo();
     else if (e.ctrlKey && e.key === "y") History.redo();
 }
 function windowPointerMove(e) {
     const artPos = getMousePos(e, ArtBoard.dom);
-
 
     if (ArtBoard.isPointInside(artPos.x, artPos.y)) {
         Input.hoverTarget = "artboard";
@@ -810,7 +844,7 @@ function windowPointerMove(e) {
         if (Input.activeTarget === "artboard") {
             ArtBoard.pointerMove(e);
             selectedTool.pointerMove?.(e);
-        } 
+        }
     }
 }
 function windowPointerUp(e) {
@@ -853,14 +887,26 @@ function windowLoad(e) {
         requestAnimationFrame(renderLoop);
     }
 
+    // Get project name
+    const queryString = window.location.search
+    const urlParams = new URLSearchParams(queryString)
+    Project.name = urlParams.get('name')
+    
     // Try to restore
-    Storage.load()
+    if (Project.name) 
+        Storage.load();
+    else 
+        Project.createNew()
+        
+
     // Save in an interval
     setInterval(() => {
-        Storage.save()
+        Storage.save();
     }, autoSaveIntervalSec * 1000);
 
-    document.querySelector("button#download").addEventListener("click", () => ArtBoard.exportAsPNG(1))
+    document
+        .querySelector("button#download")
+        .addEventListener("click", () => ArtBoard.exportAsPNG(1));
 }
 
 // TOOL BUTTONS
@@ -887,7 +933,6 @@ function handleClickTool(e, tool) {
         b.classList.remove("pressed");
     });
 }
-
 
 // UTILITY FUNCTIONS
 function hslToRgb([h, s, l]) {
