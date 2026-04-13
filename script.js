@@ -22,11 +22,18 @@ const ArtBoard = {
     },
     palette: [], // Array com string de cores ["rgb(0, 0, 0)"]
 
+    __resize() {
+        const parent = this.dom.parentElement;
+        this.dom.width = parent.clientWidth;
+        this.dom.height = parent.clientHeight;
+        console.log("resize")
+    },
     init() {
         // Canvas setting
-        this.dom.width = 700;
-        this.dom.height = 500;
+        this.__resize()
         this.dom.tabIndex = 1;
+
+        window.addEventListener("resize", () => this.__resize())
 
         this.dom.addEventListener("pointerdown", (e) => this.pointerDown(e));
         this.dom.addEventListener("click", (e) => this.click(e));

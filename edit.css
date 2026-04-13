@@ -1,4 +1,8 @@
 /* edit.css */
+html, body, main, .canvas-container {
+    height: 100%;
+}
+
 body {
     background-color: var(--gray-0);
     color: #eee;
@@ -96,13 +100,14 @@ h2.project-name[contenteditable="true"] {
 main {
     display: grid;
     grid-template-columns: auto 1fr auto;
+    height: calc(100% - 60px); /* minus header height */
 }
 
 /* =========== CANVAS ============== */
 
 .canvas-container {
     position: relative;
-    width: fit-content;
+    width: 100%;
     background-color: white;
 }
 
@@ -110,13 +115,13 @@ main {
 /* Generic aside */
 aside {
     width: 120px;
+    padding: 10px;
 }
 .tools-container {
     display: grid;
     grid-template-columns: 1fr 1fr;
     grid-auto-rows: auto;
     gap: 5px;
-    margin: 10px;
 }
 .tools-container button {
     padding: 8px 10px;
