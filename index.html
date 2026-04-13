@@ -57,12 +57,18 @@
                 margin-bottom: 15px;
             }
 
-            section.projects {
+            main {
                 max-width: 800px;
                 margin: auto;
             }
+            main > hr {
+                margin: 30px auto;
+                border: 1px solid var(--gray-1);
+            }
+
             /* Projects grid */
-            .projects-container {
+            .projects-container,
+            .trash-container {
                 margin-top: 20px;
                 display: grid;
                 grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -86,19 +92,25 @@
                 box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
             }
 
-            .project img {
+            .project .thumbnail {
                 width: 100%;
                 height: 120px;
                 background: #444;
                 border-radius: 6px;
                 margin-bottom: 10px;
+            }
+            .project img {
+                width: 100%;
+                height: 100%;
                 object-fit: cover;
+                image-rendering: pixelated;
             }
 
             .project h3 {
                 font-size: 14px;
                 text-align: center;
                 word-break: break-word;
+                text-overflow: ellipsis;
             }
             .project button.delete {
                 position: absolute;
@@ -108,7 +120,7 @@
                 margin: 10px;
                 aspect-ratio: 1;
                 border-radius: 6px;
-                background: #ff4d4d; 
+                background: #ff4d4d;
                 color: white;
                 transition: opacity 0.5s;
                 opacity: 0;
@@ -123,6 +135,34 @@
                 width: 30px;
                 height: 30px;
             }
+
+            /* Trash */
+            section.trash .project .delete {
+                display: none;
+            }
+
+            .trash-container {
+                display: none;
+                margin-bottom: 14px;
+            }
+
+            section.trash .expand,
+            section.trash .contract {
+                width: 100%;
+                background-color: var(--gray-1);
+                padding: 10px;
+                display: flex;
+                justify-content: center;
+                border-radius: 10px;
+                cursor: pointer;
+            }
+            section.trash .expand:hover,
+            section.trash .contract:hover {
+                background-color: var(--gray-1-light-hover);
+            }
+            section.trash .contract {
+                display: none;
+            }
         </style>
     </head>
     <body>
@@ -133,20 +173,37 @@
             </a>
         </div>
 
-        <section class="projects">
-            <h2>Projetos</h2>
-            <div class="projects-container">
-                <template>
-                    <div class="project">
-                        <img />
-                        <h3></h3>
-                        <button class="delete">
-                            <i data-lucide="trash-2" ></i>
-                        </button>
-                    </div>
-                </template>
-            </div>
-        </section>
+        <main>
+            <section class="projects">
+                <h2>Projects</h2>
+                <div class="projects-container">
+                    <template>
+                        <div class="project">
+                            <div class="thumbnail">
+                                <img />
+                            </div>
+                            <h3></h3>
+                            <button class="delete">
+                                <i data-lucide="trash-2"></i>
+                            </button>
+                        </div>
+                    </template>
+                </div>
+            </section>
+
+            <hr />
+
+            <section class="trash">
+                <h2>Trash</h2>
+                <div class="trash-container"></div>
+                <div class="contract" onclick="contractTrash()">
+                    <i data-lucide="chevron-up"></i>
+                </div>
+                <div class="expand" onclick="expandTrash()">
+                    <i data-lucide="chevron-down"></i>
+                </div>
+            </section>
+        </main>
 
         <!-- Development version -->
         <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
@@ -157,13 +214,17 @@
 
         <script>
             const projectsList = JSON.parse(
-                localStorage.getItem("projects") || "[]",
+                localStorage.getItem("active-projects") || "[]",
             );
-            console.log(projectsList);
+            const trashedList = JSON.parse(
+                localStorage.getItem("trashed-projects") || "[]",
+            );
+            const projectsContainer = document.querySelector(
+                ".projects-container",
+            );
+            const trashContainer = document.querySelector(".trash-container");
 
             projectsList.toReversed().forEach((projectName) => {
-                console.log(projectName)
-                const parent = document.querySelector(".projects-container");
                 const projectData = JSON.parse(
                     localStorage.getItem(projectName),
                 );
@@ -182,24 +243,94 @@
                     location.href = `/edit.html?name=${projectName}`;
                 };
                 deleteButt.onclick = (e) => {
-                    e.stopPropagation()
+                    e.stopPropagation();
 
+                    // Update active list
                     const newList = projectsList.filter(
                         (name) => name !== projectName,
                     );
+                    localStorage.setItem(
+                        "active-projects",
+                        JSON.stringify(newList),
+                    );
 
-                    localStorage.setItem("projects", JSON.stringify(newList));
-                    localStorage.removeItem(projectName);
+                    // Upadte inactive list
+                    trashedList.push(projectName);
+                    localStorage.setItem(
+                        "trashed-projects",
+                        JSON.stringify(trashedList),
+                    );
 
-                    parent.removeChild(projectEl)
+                    projectsContainer.removeChild(projectEl);
+                    trashContainer.prepend(projectEl);
                 };
 
                 titleEl.innerText = projectName;
 
                 if (projectData.dataURL) imgEl.src = projectData.dataURL;
+                else imgEl.parentElement.removeChild(imgEl);
 
-                parent.appendChild(clone);
+                projectsContainer.appendChild(clone);
             });
+
+            trashedList.toReversed().forEach((projectName) => {
+                const projectData = JSON.parse(
+                    localStorage.getItem(projectName) || "[]",
+                );
+
+                console.log(projectName);
+                const templ = document.querySelector(
+                    ".projects-container template",
+                );
+                const clone = templ.content.cloneNode(true);
+
+                const projectEl = clone.querySelector(".project");
+                const titleEl = clone.querySelector("h3");
+                const imgEl = clone.querySelector("img");
+                const deleteButt = clone.querySelector("button.delete");
+
+                projectEl.onclick = () => {
+                    e.stopPropagation();
+
+                    // Update active list
+                    projectsList.push(projectName);
+                    localStorage.setItem(
+                        "active-projects",
+                        JSON.stringify(projectsList),
+                    );
+
+                    // Upadte inactive list
+                    const newList = trashedList.filter(
+                        (name) => name !== projectName,
+                    );
+                    localStorage.setItem(
+                        "trashed-projects",
+                        JSON.stringify(newList),
+                    );
+
+                    // Switch parents
+                    trashContainer.removeChild(projectEl);
+                    projectsContainer.prepend(projectEl);
+                };
+
+                titleEl.innerText = projectName;
+
+                if (projectData.dataURL) imgEl.src = projectData;
+                else imgEl.parentElement.removeChild(imgEl);
+
+                trashContainer.appendChild(clone);
+            });
+
+            function expandTrash() {
+                trashContainer.style.display = "grid";
+                document.querySelector(".contract").style.display = "flex";
+                document.querySelector(".expand").style.display = "none";
+            }
+            function contractTrash() {
+                trashContainer.style.display = "none";
+                document.querySelector(".contract").style.display = "none";
+                document.querySelector(".expand").style.display = "flex";
+            }
         </script>
         <script>
             lucide.createIcons();

@@ -153,6 +153,9 @@ const ArtBoard = {
         // Update dimentions
         document.querySelector(".canvas-container .dimentions").innerText = `${corners.right - corners.left} × ${corners.bottom - corners.top}`
     },
+    clearPixel(coords) {
+        this.pixels.delete(`${coords.x},${coords.y}`)
+    },
 
     // Centraliza o desenho no canvas
     draw() {
@@ -669,6 +672,64 @@ const Pen = {
         }
     },
 };
+const Eraser = {
+    lastX: null,
+    lastY: null,
+
+    pointerDown(e) {
+        History.saveState()
+
+        const coords = ArtBoard.getGridCoords(getMousePos(e, this.dom))
+
+        this.lastX = coords.x 
+        this.lastY = coords.y 
+
+        ArtBoard.clearPixel(coords)
+    },
+    pointerMove(e) {
+        if (this.lastX === null || this.lastY === null) return
+
+        const {x, y} = ArtBoard.getGridCoords(getMousePos(e, ArtBoard.dom))
+        if (x === this.lastX && y === this.lastY) return
+
+        this.eraseLine(this.lastX, this.lastY, x, y)
+
+        this.lastX = x
+        this.lastY = y
+    },
+    pointerUp() {
+        this.lastX = null
+        this.lastY = null
+    },
+    eraseLine(x0, y0, x1, y1) {
+        const dx = Math.abs(x1 - x0);
+        const dy = Math.abs(y1 - y0);
+
+        const sx = x0 < x1 ? 1 : -1;
+        const sy = y0 < y1 ? 1 : -1;
+
+        let err = dx - dy;
+
+        while (true) {
+            ArtBoard.clearPixel({x: x0, y: y0})
+
+            if (x0 === x1 && y0 === y1) break;
+
+            const e2 = 2 * err;
+
+            if (e2 > -dy) {
+                err -= dy;
+                x0 += sx;
+            }
+
+            if (e2 < dx) {
+                err += dx;
+                y0 += sy;
+            }
+        }
+    },
+}
+
 const Bucket = {
     LIMIT: 1000,
 
@@ -799,12 +860,12 @@ const Project = {
 
     rename(newName) {
         const data = localStorage.getItem(this.name);
-        const projects = JSON.parse(localStorage.getItem("projects") || "[]");
+        const projects = JSON.parse(localStorage.getItem("active-projects") || "[]");
 
         const newProjectsList = projects.filter((name) => name !== this.name);
         newProjectsList.push(newName);
 
-        localStorage.setItem("projects", JSON.stringify(newProjectsList));
+        localStorage.setItem("active-projects", JSON.stringify(newProjectsList));
         localStorage.setItem(newName, data);
         localStorage.removeItem(this.name);
 
@@ -885,11 +946,11 @@ const Storage = {
             dataURL: ArtBoard.exportAsPNG(1, false),
         };
 
-        const projectsListJSON = localStorage.getItem("projects") || "[]";
+        const projectsListJSON = localStorage.getItem("active-projects") || "[]";
         const projectsList = JSON.parse(projectsListJSON);
         if (!projectsList.includes(SAVE_KEY)) {
             projectsList.push(SAVE_KEY);
-            localStorage.setItem("projects", JSON.stringify(projectsList));
+            localStorage.setItem("active-projects", JSON.stringify(projectsList));
         }
 
         try {
@@ -1042,6 +1103,7 @@ const buttonTypePolyline = document.querySelector("button.type-polyline");
 const buttonPen = document.querySelector("button.tool.pen");
 const buttonBucket = document.querySelector("button.tool.bucket");
 const buttonPipette = document.querySelector("button.pipette");
+const buttonEraser = document.querySelector("button.tool.eraser")
 
 buttonMove.addEventListener("click", (e) => handleClickTool(e, Move));
 buttonTypePolyline.addEventListener("click", (e) =>
@@ -1050,6 +1112,7 @@ buttonTypePolyline.addEventListener("click", (e) =>
 buttonPen.addEventListener("click", (e) => handleClickTool(e, Pen));
 buttonBucket.addEventListener("click", (e) => handleClickTool(e, Bucket));
 buttonPipette.addEventListener("click", (e) => handleClickTool(e, Pipette));
+buttonEraser.addEventListener("click", (e) => handleClickTool(e, Eraser))
 // TOOL BUTTONS EVENTS
 function handleClickTool(e, tool) {
     const button = e.target;

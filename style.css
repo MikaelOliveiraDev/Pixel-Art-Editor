@@ -2,6 +2,7 @@ body {
     --gray-0: #1e1e1e;
     --gray-1: #2a2a2a;
     --gray-1-hover: #555;
+    --gray-1-light-hover: #333333;
     --button-green: #4CAF50;
     --button-green-hover: #45a049;
 }
