@@ -16,6 +16,12 @@ const ArtBoard = {
     ctx: document.querySelector("canvas.canvas").getContext("2d"),
     pixels: new Map([]),
     pixelSize: 20,
+    drawingBoudingCorners: {
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0
+    },
     lastMousePos: { x: null, y: null },
     camera: {
         x: 0,
@@ -131,6 +137,21 @@ const ArtBoard = {
         const key = `${x},${y}`;
         const colorIndex = this.getColorIndex(color, true);
         this.pixels.set(key, colorIndex);
+
+        // Check if painted outside the known borders of the drawing
+        const corners = this.drawingBoudingCorners
+        if (x < corners.left) 
+            corners.left = x
+        else if (x > corners.right)
+            corners.right = x
+
+        if (y < corners.top)
+            corners.top = y
+        else if (y > corners.bottom)
+            corners.bottom = y
+
+        // Update dimentions
+        document.querySelector(".canvas-container .dimentions").innerText = `${corners.right - corners.left} × ${corners.bottom - corners.top}`
     },
 
     // Centraliza o desenho no canvas
@@ -212,7 +233,7 @@ const ArtBoard = {
             maxX = -Infinity,
             maxY = -Infinity;
 
-        if (this.pixels.size === 0) return alert("O desenho está vazio!");
+        if (this.pixels.size === 0) return console.warn("Drawing is empty!");
 
         this.pixels.forEach((_, key) => {
             const [x, y] = key.split(",").map(Number);
@@ -722,7 +743,9 @@ const Pipette = {
     click(e) {
         const pos = getMousePos(Input, ArtBoard.dom);
         const color = this.getColorAtMousePos(pos);
-        if (color) document.querySelector("input#selected-color").value = ColorPicker.rgbStringToHex(color);
+        if (color)
+            document.querySelector("input#selected-color").value =
+                ColorPicker.rgbStringToHex(color);
     },
 
     getColorAtMousePos({ x, y }) {
@@ -804,6 +827,7 @@ const History = {
             palette: [...ArtBoard.palette],
             selectedTool: selectedTool,
             toolState: selectedTool?.getState?.(),
+            drawingBoudingCorners: ArtBoard.drawingBoudingCorners
         };
     },
 
@@ -818,6 +842,10 @@ const History = {
         if (selectedTool && selectedTool.applyState && snapshot.toolState) {
             selectedTool.applyState(snapshot.toolState);
         }
+
+        ArtBoard.drawingBoudingCorners = snapshot.drawingBoudingCorners       
+         // Update dimentions
+        document.querySelector(".canvas-container .dimentions").innerText = `${corners.right - corners.left} × ${corners.bottom - corners.top}`
     },
 
     saveState() {
@@ -997,12 +1025,9 @@ function windowLoad(e) {
 
     // Save in an interval
     setInterval(() => {
-        Storage.save();
+        if (ArtBoard.pixels.size > 50) Storage.save();
     }, autoSaveIntervalSec * 1000);
 
-    document
-        .querySelector("button#download")
-        .addEventListener("click", () => ArtBoard.exportAsPNG(1));
     document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "hidden") {
             Storage.save();

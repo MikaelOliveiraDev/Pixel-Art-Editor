@@ -1,145 +1,208 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pixel Arts</title>
-    <link rel="stylesheet" href="style.css">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Pixel Arts</title>
+        <link rel="stylesheet" href="style.css" />
 
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: Arial, sans-serif;
-        }
-
-        body {
-            background: var(--gray-0);
-            color: #eee;
-            padding: 30px;
-        }
-
-        .banner {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-direction: column;
-            gap: 10px;
-
-            max-width: 500px;
-            aspect-ratio: 4/3;
-            margin: auto;
-        }
-
-        h2 {
-            margin-bottom: 15px;
-        }
-
-        /* Top button */
-        a button {
-            background: var(--button-green);
-            border: none;
-            padding: 10px 16px;
-            color: white;
-            font-size: 14px;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-
-        a button:hover {
-            background: var(--button-green-hover);
-        }
-
-        section.projects {
-            max-width: 800px;
-            margin: auto;
-        }
-        /* Projects grid */
-        .projects-container {
-            margin-top: 20px;
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-            gap: 15px;
-        }
-
-        /* Card */
-        .project {
-            background: var(--gray-1);
-            border-radius: 10px;
-            padding: 10px;
-            cursor: pointer;
-            transition: transform 0.15s, box-shadow 0.15s;
-        }
-
-        .project:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.4);
-        }
-
-        .project img {
-            width: 100%;
-            height: 120px;
-            background: #444;
-            border-radius: 6px;
-            margin-bottom: 10px;
-            object-fit: cover;
-        }
-
-        .project h3 {
-            font-size: 14px;
-            text-align: center;
-            word-break: break-word;
-        }
-    </style>
-</head>
-<body>
-
-    <div class="banner">
-        <h1>Pixel Art Editor</h1>
-        <a href="/edit.html?name=">
-            <button>Create new</button>
-        </a>
-    </div>
-
-    <section class="projects">
-        <h2>Projetos</h2>
-        <div class="projects-container">
-            <template>
-                <div class="project">
-                    <img/>
-                    <h3></h3>
-                </div>
-            </template>
-        </div>
-    </section>
-
-    <script>
-        const projectsList = JSON.parse(localStorage.getItem("projects") || "[]")
-
-        projectsList.forEach(projectName => {
-            const projectData = JSON.parse(localStorage.getItem(projectName))
-
-            const templ = document.querySelector('.projects-container template')
-            const clone = templ.content.cloneNode(true)
-
-            const projectEl = clone.querySelector(".project")
-            const titleEl = clone.querySelector("h3")
-            const imgEl = clone.querySelector("img")
-
-
-            projectEl.onclick = () => {
-                location.href = `/edit.html?name=${projectName}`
+        <style>
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+                font-family: Arial, sans-serif;
             }
-            titleEl.innerText = projectName
 
-            if (projectData.dataURL)
-            imgEl.src = projectData.dataURL
+            body {
+                background: var(--gray-0);
+                color: #eee;
+                padding: 30px;
+            }
 
-            document.querySelector(".projects-container").appendChild(clone)
-        });
-    </script>
+            .banner {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                flex-direction: column;
+                gap: 10px;
 
-</body>
+                max-width: 500px;
+                aspect-ratio: 4/3;
+                margin: auto;
+            }
+            .banner button {
+                background: var(--button-green);
+                color: white;
+                border: none;
+                padding: 12px 20px;
+                font-family:
+                    "Courier New", Courier, monospace; /* Fonte mono combina com pixel */
+                font-weight: bold;
+                text-transform: uppercase;
+                box-shadow: 4px 4px 0px #2d5a31; /* Sombra sólida */
+                cursor: pointer;
+                transition: all 0.1s;
+            }
+
+            .banner button:active {
+                box-shadow: 0px 0px 0px #2d5a31;
+                transform: translate(
+                    4px,
+                    4px
+                ); /* Simula o clique "afundando" */
+            }
+
+            h2 {
+                margin-bottom: 15px;
+            }
+
+            section.projects {
+                max-width: 800px;
+                margin: auto;
+            }
+            /* Projects grid */
+            .projects-container {
+                margin-top: 20px;
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+                gap: 15px;
+            }
+
+            /* Card */
+            .project {
+                background: var(--gray-1);
+                border-radius: 10px;
+                padding: 10px;
+                cursor: pointer;
+                transition:
+                    transform 0.15s,
+                    box-shadow 0.15s;
+                position: relative;
+            }
+
+            .project:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+            }
+
+            .project img {
+                width: 100%;
+                height: 120px;
+                background: #444;
+                border-radius: 6px;
+                margin-bottom: 10px;
+                object-fit: cover;
+            }
+
+            .project h3 {
+                font-size: 14px;
+                text-align: center;
+                word-break: break-word;
+            }
+            .project button.delete {
+                position: absolute;
+                top: 0;
+                right: 0;
+                padding: 4px;
+                margin: 10px;
+                aspect-ratio: 1;
+                border-radius: 6px;
+                background: #ff4d4d; 
+                color: white;
+                transition: opacity 0.5s;
+                opacity: 0;
+                border: none;
+            }
+            .project:hover button.delete {
+                display: block;
+                opacity: 1;
+            }
+
+            button.delete i {
+                width: 30px;
+                height: 30px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="banner">
+            <h1>Pixel Art Editor</h1>
+            <a href="/edit.html?name=">
+                <button>Create new</button>
+            </a>
+        </div>
+
+        <section class="projects">
+            <h2>Projetos</h2>
+            <div class="projects-container">
+                <template>
+                    <div class="project">
+                        <img />
+                        <h3></h3>
+                        <button class="delete">
+                            <i data-lucide="trash-2" ></i>
+                        </button>
+                    </div>
+                </template>
+            </div>
+        </section>
+
+        <!-- Development version -->
+        <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+
+        <!-- Production version -->
+        <!--         <script src="https://unpkg.com/lucide@latest"></script>
+            -->
+
+        <script>
+            const projectsList = JSON.parse(
+                localStorage.getItem("projects") || "[]",
+            );
+            console.log(projectsList);
+
+            projectsList.toReversed().forEach((projectName) => {
+                console.log(projectName)
+                const parent = document.querySelector(".projects-container");
+                const projectData = JSON.parse(
+                    localStorage.getItem(projectName),
+                );
+
+                const templ = document.querySelector(
+                    ".projects-container template",
+                );
+                const clone = templ.content.cloneNode(true);
+
+                const projectEl = clone.querySelector(".project");
+                const titleEl = clone.querySelector("h3");
+                const imgEl = clone.querySelector("img");
+                const deleteButt = clone.querySelector("button.delete");
+
+                projectEl.onclick = () => {
+                    location.href = `/edit.html?name=${projectName}`;
+                };
+                deleteButt.onclick = (e) => {
+                    e.stopPropagation()
+
+                    const newList = projectsList.filter(
+                        (name) => name !== projectName,
+                    );
+
+                    localStorage.setItem("projects", JSON.stringify(newList));
+                    localStorage.removeItem(projectName);
+
+                    parent.removeChild(projectEl)
+                };
+
+                titleEl.innerText = projectName;
+
+                if (projectData.dataURL) imgEl.src = projectData.dataURL;
+
+                parent.appendChild(clone);
+            });
+        </script>
+        <script>
+            lucide.createIcons();
+        </script>
+    </body>
 </html>
