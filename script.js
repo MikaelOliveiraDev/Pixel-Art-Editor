@@ -20,7 +20,7 @@ const ArtBoard = {
         top: 0,
         left: 0,
         right: 0,
-        bottom: 0
+        bottom: 0,
     },
     lastMousePos: { x: null, y: null },
     camera: {
@@ -34,8 +34,20 @@ const ArtBoard = {
         const parent = this.dom.parentElement;
         this.dom.width = parent.clientWidth;
         this.dom.height = parent.clientHeight;
-        console.log("resize");
     },
+    updateDimensionsUI() {
+        const corners = this.drawingBoudingCorners;
+        const width =
+            this.pixels.size === 0 ? 0 : corners.right - corners.left + 1;
+        const height =
+            this.pixels.size === 0 ? 0 : corners.bottom - corners.top + 1;
+
+        const dimEl = document.querySelector(".canvas-container .dimentions");
+        if (dimEl) {
+            dimEl.innerText = `${width} × ${height}`;
+        }
+    },
+
     init() {
         // Canvas setting
         this.__resize();
@@ -135,26 +147,76 @@ const ArtBoard = {
 
         const { x, y } = coords;
         const key = `${x},${y}`;
+
+        // Check if painting outside the known borders of the drawing
+        const corners = this.drawingBoudingCorners;
+        if (corners.left ?? corners.top ?? corners.right ?? corners.bottom) {
+            console.log("Opa")
+        }
+
+        if (this.pixels.size === 0)
+            this.drawingBoudingCorners = {
+                top: y,
+                left: x,
+                right: x,
+                bottom: y,
+            };
+        else {
+            corners.left = Math.min(corners.left, x);
+            corners.right = Math.max(corners.right, x);
+            corners.top = Math.min(corners.top, y);
+            corners.bottom = Math.max(corners.bottom, y);
+        }
+
         const colorIndex = this.getColorIndex(color, true);
         this.pixels.set(key, colorIndex);
 
-        // Check if painted outside the known borders of the drawing
-        const corners = this.drawingBoudingCorners
-        if (x < corners.left) 
-            corners.left = x
-        else if (x > corners.right)
-            corners.right = x
-
-        if (y < corners.top)
-            corners.top = y
-        else if (y > corners.bottom)
-            corners.bottom = y
-
-        // Update dimentions
-        document.querySelector(".canvas-container .dimentions").innerText = `${corners.right - corners.left} × ${corners.bottom - corners.top}`
+        this.updateDimensionsUI();
     },
     clearPixel(coords) {
-        this.pixels.delete(`${coords.x},${coords.y}`)
+        this.pixels.delete(`${coords.x},${coords.y}`);
+
+        const c = this.drawingBoudingCorners;
+        if (
+            coords.x === c.left ||
+            coords.x === c.right ||
+            coords.y === c.top ||
+            coords.y === c.bottom
+        ) {
+            this.recalculateBounds();
+        }
+        this.updateDimensionsUI();
+    },
+
+    recalculateBounds() {
+        if (this.pixels.size === 0) {
+            this.drawingBoudingCorners = {
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+            };
+            return;
+        }
+
+        let minX = Infinity,
+            minY = Infinity,
+            maxX = -Infinity,
+            maxY = -Infinity;
+        this.pixels.forEach((_, key) => {
+            const [x, y] = key.split(",").map(Number);
+            minX = Math.min(minX, x);
+            maxX = Math.max(maxX, x);
+            minY = Math.min(minY, y);
+            maxY = Math.max(maxY, y);
+        });
+
+        this.drawingBoudingCorners = {
+            top: minY,
+            left: minX,
+            right: maxX,
+            bottom: maxY,
+        };
     },
 
     // Centraliza o desenho no canvas
@@ -274,7 +336,7 @@ const ArtBoard = {
         // 4. Transformar em imagem e baixar
         if (download) {
             const link = document.createElement("a");
-            link.download = "minha-pixelart.png";
+            link.download = Project.name+".png";
             link.href = tempCanvas.toDataURL("image/png");
             link.click();
         } else {
@@ -677,29 +739,29 @@ const Eraser = {
     lastY: null,
 
     pointerDown(e) {
-        History.saveState()
+        History.saveState();
 
-        const coords = ArtBoard.getGridCoords(getMousePos(e, this.dom))
+        const coords = ArtBoard.getGridCoords(getMousePos(e, this.dom));
 
-        this.lastX = coords.x 
-        this.lastY = coords.y 
+        this.lastX = coords.x;
+        this.lastY = coords.y;
 
-        ArtBoard.clearPixel(coords)
+        ArtBoard.clearPixel(coords);
     },
     pointerMove(e) {
-        if (this.lastX === null || this.lastY === null) return
+        if (this.lastX === null || this.lastY === null) return;
 
-        const {x, y} = ArtBoard.getGridCoords(getMousePos(e, ArtBoard.dom))
-        if (x === this.lastX && y === this.lastY) return
+        const { x, y } = ArtBoard.getGridCoords(getMousePos(e, ArtBoard.dom));
+        if (x === this.lastX && y === this.lastY) return;
 
-        this.eraseLine(this.lastX, this.lastY, x, y)
+        this.eraseLine(this.lastX, this.lastY, x, y);
 
-        this.lastX = x
-        this.lastY = y
+        this.lastX = x;
+        this.lastY = y;
     },
     pointerUp() {
-        this.lastX = null
-        this.lastY = null
+        this.lastX = null;
+        this.lastY = null;
     },
     eraseLine(x0, y0, x1, y1) {
         const dx = Math.abs(x1 - x0);
@@ -711,7 +773,7 @@ const Eraser = {
         let err = dx - dy;
 
         while (true) {
-            ArtBoard.clearPixel({x: x0, y: y0})
+            ArtBoard.clearPixel({ x: x0, y: y0 });
 
             if (x0 === x1 && y0 === y1) break;
 
@@ -728,7 +790,7 @@ const Eraser = {
             }
         }
     },
-}
+};
 
 const Bucket = {
     LIMIT: 1000,
@@ -860,12 +922,17 @@ const Project = {
 
     rename(newName) {
         const data = localStorage.getItem(this.name);
-        const projects = JSON.parse(localStorage.getItem("active-projects") || "[]");
+        const projects = JSON.parse(
+            localStorage.getItem("active-projects") || "[]",
+        );
 
         const newProjectsList = projects.filter((name) => name !== this.name);
         newProjectsList.push(newName);
 
-        localStorage.setItem("active-projects", JSON.stringify(newProjectsList));
+        localStorage.setItem(
+            "active-projects",
+            JSON.stringify(newProjectsList),
+        );
         localStorage.setItem(newName, data);
         localStorage.removeItem(this.name);
 
@@ -888,7 +955,7 @@ const History = {
             palette: [...ArtBoard.palette],
             selectedTool: selectedTool,
             toolState: selectedTool?.getState?.(),
-            drawingBoudingCorners: ArtBoard.drawingBoudingCorners
+            drawingBoudingCorners: { ...ArtBoard.drawingBoudingCorners },
         };
     },
 
@@ -904,9 +971,8 @@ const History = {
             selectedTool.applyState(snapshot.toolState);
         }
 
-        ArtBoard.drawingBoudingCorners = snapshot.drawingBoudingCorners       
-         // Update dimentions
-        document.querySelector(".canvas-container .dimentions").innerText = `${corners.right - corners.left} × ${corners.bottom - corners.top}`
+        ArtBoard.drawingBoudingCorners = snapshot.drawingBoudingCorners;
+        ArtBoard.updateDimensionsUI();
     },
 
     saveState() {
@@ -944,13 +1010,18 @@ const Storage = {
             camera: ArtBoard.camera,
             pixelSize: ArtBoard.pixelSize,
             dataURL: ArtBoard.exportAsPNG(1, false),
+            drawingBoudingCorners: { ...ArtBoard.drawingBoudingCorners },
         };
 
-        const projectsListJSON = localStorage.getItem("active-projects") || "[]";
+        const projectsListJSON =
+            localStorage.getItem("active-projects") || "[]";
         const projectsList = JSON.parse(projectsListJSON);
         if (!projectsList.includes(SAVE_KEY)) {
             projectsList.push(SAVE_KEY);
-            localStorage.setItem("active-projects", JSON.stringify(projectsList));
+            localStorage.setItem(
+                "active-projects",
+                JSON.stringify(projectsList),
+            );
         }
 
         try {
@@ -975,6 +1046,7 @@ const Storage = {
         ArtBoard.palette = data.palette || [];
         ArtBoard.camera = data.camera || ArtBoard.camera;
         ArtBoard.pixelSize = data.pixelSize || ArtBoard.pixelSize;
+        ArtBoard.drawingBoudingCorners = data.drawingBoudingCorners;
 
         return true;
     },
@@ -1002,6 +1074,7 @@ function windowKeyDown(e) {
     else if (e.key === "t") buttonTypePolyline.click();
     else if (e.key === "b") buttonBucket.click();
     else if (e.key === "p") buttonPen.click();
+    else if (e.key === "e") buttonEraser.click()
     else if (e.ctrlKey && e.key === "z") History.undo();
     else if (e.ctrlKey && e.key === "y") History.redo();
 }
@@ -1103,7 +1176,7 @@ const buttonTypePolyline = document.querySelector("button.type-polyline");
 const buttonPen = document.querySelector("button.tool.pen");
 const buttonBucket = document.querySelector("button.tool.bucket");
 const buttonPipette = document.querySelector("button.pipette");
-const buttonEraser = document.querySelector("button.tool.eraser")
+const buttonEraser = document.querySelector("button.tool.eraser");
 
 buttonMove.addEventListener("click", (e) => handleClickTool(e, Move));
 buttonTypePolyline.addEventListener("click", (e) =>
@@ -1112,7 +1185,7 @@ buttonTypePolyline.addEventListener("click", (e) =>
 buttonPen.addEventListener("click", (e) => handleClickTool(e, Pen));
 buttonBucket.addEventListener("click", (e) => handleClickTool(e, Bucket));
 buttonPipette.addEventListener("click", (e) => handleClickTool(e, Pipette));
-buttonEraser.addEventListener("click", (e) => handleClickTool(e, Eraser))
+buttonEraser.addEventListener("click", (e) => handleClickTool(e, Eraser));
 // TOOL BUTTONS EVENTS
 function handleClickTool(e, tool) {
     const button = e.target;
