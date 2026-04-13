@@ -101,7 +101,7 @@ const ArtBoard = {
             this.camera.x += dx;
             this.camera.y += dy;
             this.dom.style.cursor = "grabbing";
-        } else {
+        } else if (selectedTool !== Eraser) {
             this.dom.style.cursor = "default";
         }
 
@@ -109,6 +109,8 @@ const ArtBoard = {
     },
     pointerUp(e) {
         this.lastMousePos = { x: null, y: null };
+
+        if (selectedTool !== Eraser)
         this.dom.style.cursor = "default";
     },
 
@@ -151,7 +153,7 @@ const ArtBoard = {
         // Check if painting outside the known borders of the drawing
         const corners = this.drawingBoudingCorners;
         if (corners.left ?? corners.top ?? corners.right ?? corners.bottom) {
-            console.log("Opa")
+            console.log("Opa");
         }
 
         if (this.pixels.size === 0)
@@ -173,19 +175,22 @@ const ArtBoard = {
 
         this.updateDimensionsUI();
     },
-    clearPixel(coords) {
+    clearPixel(coords, recalculateBounds) {
         this.pixels.delete(`${coords.x},${coords.y}`);
 
-        const c = this.drawingBoudingCorners;
-        if (
-            coords.x === c.left ||
-            coords.x === c.right ||
-            coords.y === c.top ||
-            coords.y === c.bottom
-        ) {
-            this.recalculateBounds();
+        if (recalculateBounds) {
+
+            const c = this.drawingBoudingCorners;
+            if (
+                coords.x === c.left ||
+                coords.x === c.right ||
+                coords.y === c.top ||
+                coords.y === c.bottom
+            ) {
+                this.recalculateBounds();
+            }
+            this.updateDimensionsUI();
         }
-        this.updateDimensionsUI();
     },
 
     recalculateBounds() {
@@ -336,7 +341,7 @@ const ArtBoard = {
         // 4. Transformar em imagem e baixar
         if (download) {
             const link = document.createElement("a");
-            link.download = Project.name+".png";
+            link.download = Project.name + ".png";
             link.href = tempCanvas.toDataURL("image/png");
             link.click();
         } else {
@@ -737,6 +742,20 @@ const Pen = {
 const Eraser = {
     lastX: null,
     lastY: null,
+    size: 1,
+
+    select() {
+        const eraserRange = document.querySelector("#eraser-size");
+        eraserRange.style.display = "block";
+
+        ArtBoard.dom.style.cursor = "none";
+    },
+    unselect() {
+        const eraserRange = document.querySelector("#eraser-size");
+        eraserRange.style.display = "none";
+
+        ArtBoard.dom.style.cursor = "pointer";
+    },
 
     pointerDown(e) {
         History.saveState();
@@ -746,7 +765,7 @@ const Eraser = {
         this.lastX = coords.x;
         this.lastY = coords.y;
 
-        ArtBoard.clearPixel(coords);
+        this.eraseArea(coords)
     },
     pointerMove(e) {
         if (this.lastX === null || this.lastY === null) return;
@@ -762,6 +781,21 @@ const Eraser = {
     pointerUp() {
         this.lastX = null;
         this.lastY = null;
+
+
+        ArtBoard.recalculateBounds()
+        ArtBoard.updateDimensionsUI()
+    },
+    eraseArea(centerCoords) {
+        const offset = Math.floor(this.size / 2)
+        const startX = centerCoords.x - offset
+        const startY = centerCoords.y - offset
+
+        for (let i = 0; i < this.size; i++) {
+            for (let j = 0; j < this.size; j++) {
+                ArtBoard.clearPixel({x: startX + i, y: startY + j}, false)
+            }
+        }
     },
     eraseLine(x0, y0, x1, y1) {
         const dx = Math.abs(x1 - x0);
@@ -773,7 +807,7 @@ const Eraser = {
         let err = dx - dy;
 
         while (true) {
-            ArtBoard.clearPixel({ x: x0, y: y0 });
+            this.eraseArea({ x: x0, y: y0 });
 
             if (x0 === x1 && y0 === y1) break;
 
@@ -789,6 +823,36 @@ const Eraser = {
                 y0 += sy;
             }
         }
+
+
+    },
+
+    draw(ctx) {
+        const mousePos = getMousePos(Input, ArtBoard.dom);
+
+        const coords = ArtBoard.getGridCoords(mousePos);
+
+        let offset = Math.floor(this.size / 2)
+        let sizePx = ArtBoard.pixelSize * this.size
+
+        let x = (coords.x - offset) * ArtBoard.pixelSize 
+        let y = (coords.y - offset) * ArtBoard.pixelSize 
+
+        ctx.lineWidth = 2 / ArtBoard.camera.scale; // Linha constante independente do zoom
+        ctx.strokeStyle = "white";
+        ctx.strokeRect(
+            x,y,
+            sizePx,
+            sizePx,
+        );
+
+        ctx.strokeStyle = "black";
+        ctx.lineWidth = 1 / ArtBoard.camera.scale;
+        ctx.strokeRect(
+            x,y,
+            sizePx,
+            sizePx,
+        );
     },
 };
 
@@ -1074,7 +1138,7 @@ function windowKeyDown(e) {
     else if (e.key === "t") buttonTypePolyline.click();
     else if (e.key === "b") buttonBucket.click();
     else if (e.key === "p") buttonPen.click();
-    else if (e.key === "e") buttonEraser.click()
+    else if (e.key === "e") buttonEraser.click();
     else if (e.ctrlKey && e.key === "z") History.undo();
     else if (e.ctrlKey && e.key === "y") History.redo();
 }
@@ -1190,13 +1254,25 @@ buttonEraser.addEventListener("click", (e) => handleClickTool(e, Eraser));
 function handleClickTool(e, tool) {
     const button = e.target;
 
+    selectedTool?.unselect?.(e);
     selectedTool = tool;
+    selectedTool.select?.(e);
 
     document.querySelectorAll(".tools-container button").forEach((b) => {
+        // Press this button
         if (b === button) return b.classList.add("pressed");
+
+        // Other buttons
         b.classList.remove("pressed");
     });
 }
+
+// TOOL CONTROLS
+const eraserRange = document.querySelector("#eraser-size")
+
+eraserRange.addEventListener("input", (e) => {
+    Eraser.size = e.target.value
+})
 
 // HEADER AND NAV
 const h2ProjectName = document.querySelector("h2.project-name");

@@ -1,5 +1,8 @@
 /* edit.css */
-html, body, main, .canvas-container {
+html,
+body,
+main,
+.canvas-container {
     height: 100%;
 }
 
@@ -9,6 +12,29 @@ body {
     font-family: Arial, Helvetica, sans-serif;
     margin: 0;
 }
+
+input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    background: transparent;
+}
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+}
+input[type="range"]:focus {
+    outline: none; /* Removes the blue border. You should probably do some kind of focus styling for accessibility reasons though. */
+}
+
+input[type="range"]::-ms-track {
+    width: 100%;
+    cursor: pointer;
+
+    /* Hides the slider so custom styles can be added */
+    background: transparent;
+    border-color: transparent;
+    color: transparent;
+}
+
 /* ======== HEADER ========= */
 
 header {
@@ -122,6 +148,68 @@ main {
     border-radius: 2px;
 }
 
+/* Eraser range */
+#eraser-size {
+    --slider-thickness: 11px;
+    --thumb-size: 25px;
+
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateX(-50%) rotate(-90deg);
+    margin: 15px;
+    width: 200px;
+    display: none;
+}
+/* thumb */
+#eraser-size::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    border: 1px solid white;
+    width: var(--thumb-size);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: var(--blue-pressed);
+    cursor: pointer;
+    margin-top: calc(-0.5 * (var(--thumb-size) - var(--slider-thickness)));
+}
+#eraser-size::-moz-range-thumb {
+    border: 1px solid white;
+    width: var(--thumb-size);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: var(--blue-pressed);
+    cursor: pointer;
+    margin-top: calc(-0.5 * (var(--thumb-size) - var(--slider-thickness)));
+}
+#eraser-size::-ms-thumb {
+    border: 1px solid white;
+    width: var(--thumb-size);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: var(--blue-pressed);
+    cursor: pointer;
+    margin-top: calc(-0.5 * (var(--thumb-size) - var(--slider-thickness)));
+}
+/* Slider */
+#eraser-size::-webkit-slider-runnable-track {
+    width: 20px;
+    height: var(--slider-thickness);
+    background: var(--blue);
+    border-radius: 20px;
+}
+#eraser-size::-moz-range-track {
+    width: 20px;
+    height: var(--slider-thickness);
+    background: var(--blue);
+    border-radius: 20px;
+}
+#eraser-size::-ms-track {
+    width: 20px;
+    height: var(--slider-thickness);
+    background: var(--blue);
+    border-radius: 20px;
+}
+
 /* =========== ASIDE TOOLS ============= */
 /* Generic aside */
 aside {
@@ -136,14 +224,14 @@ aside {
 }
 .tools-container button {
     padding: 8px 10px;
-    background-color: #9cbfe2;
+    background-color: var(--blue);
     outline: none;
     border-radius: 4px;
     border: none;
     aspect-ratio: 1;
 }
 .tools-container button.pressed {
-    background-color: #3473b2;
+    background-color: var(--blue-pressed);
     font-weight: bold;
     color: white;
 }
