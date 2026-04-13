@@ -721,6 +721,24 @@ const Project = {
         Storage.save();
         location.href = "/edit.html?name=" + this.name;
     },
+
+    rename(newName) {
+        const data = localStorage.getItem(this.name);
+        const projects = JSON.parse(localStorage.getItem("projects") || "[]");
+
+        const newProjectsList = projects.filter((name) => name !== this.name);
+        newProjectsList.push(newName);
+
+        localStorage.setItem("projects", JSON.stringify(newProjectsList));
+        localStorage.setItem(newName, data);
+        localStorage.removeItem(this.name);
+
+        Project.name = newName;
+        const newUrl = `${window.location.pathname}?name=${encodeURIComponent(newName)}`;
+        window.history.replaceState({}, "", newUrl);
+
+        console.log(`Projeto renomeado para: ${newName}`);
+    },
 };
 
 const History = {
@@ -908,6 +926,9 @@ function windowLoad(e) {
         Project.createNew();
     }
 
+    // Put the project name at the header
+    h2ProjectName.innerText = Project.name;
+
     // Save in an interval
     setInterval(() => {
         Storage.save();
@@ -937,7 +958,6 @@ buttonTypePolyline.addEventListener("click", (e) =>
 buttonPen.addEventListener("click", (e) => handleClickTool(e, Pen));
 buttonBucket.addEventListener("click", (e) => handleClickTool(e, Bucket));
 // TOOL BUTTONS EVENTS
-
 function handleClickTool(e, tool) {
     const button = e.target;
 
@@ -947,6 +967,32 @@ function handleClickTool(e, tool) {
         if (b === button) return b.classList.add("pressed");
         b.classList.remove("pressed");
     });
+}
+
+// HEADER AND NAV
+const h2ProjectName = document.querySelector("h2.project-name");
+h2ProjectName.addEventListener("click", clickProjectName);
+
+function clickProjectName(e) {
+    const el = e.target;
+
+    el.contentEditable = true;
+    el.focus();
+    el.onkeydown = (event) => {
+        if (event.key === "Enter") {
+            event.preventDefault(); // Impede o "Enter" de criar uma nova linha
+            el.blur(); // Remove o foco, disparando o evento de salvar
+        }
+    };
+
+    el.onblur = () => {
+        el.contentEditable = false;
+        const newName = el.innerText.trim();
+
+        if (newName && newName !== Project.name) {
+            Project.rename(newName);
+        }
+    };
 }
 
 // UTILITY FUNCTIONS

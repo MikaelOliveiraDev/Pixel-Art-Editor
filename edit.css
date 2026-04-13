@@ -1,49 +1,144 @@
+/* edit.css */
+body {
+    background-color: var(--gray-0);
+    color: #eee;
+    font-family: Arial, Helvetica, sans-serif;
+    margin: 0;
+}
+/* ======== HEADER ========= */
+
+header {
+    display: flex;
+    align-items: center;
+    background-color: var(--gray-1);
+    padding: 0 16px;
+    border-bottom: 1px solid #444;
+}
+
+.menu-container {
+    position: relative;
+    display: inline-block;
+}
+.menu-container .menu-trigger {
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    padding: 8px;
+}
+.menu-container .menu-trigger:hover {
+    background-color: var(--gray-1-hover);
+}
+
+.dropdown-menu {
+    display: none; /* Esconde o menu por padrão */
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: var(--gray-1); /* Use suas variáveis */
+    border: 1px solid #444;
+    border-radius: 4px;
+    z-index: 100;
+    min-width: 150px;
+}
+
+.menu-container:hover .dropdown-menu {
+    display: flex;
+    flex-direction: column;
+}
+
+.dropdown-menu a,
+.dropdown-menu button {
+    padding: 10px;
+    font-size: 16px;
+    text-decoration: none;
+    color: white;
+    background: none;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+}
+
+.dropdown-menu a:hover,
+.dropdown-menu button:hover {
+    background: var(--gray-1-hover);
+}
+
+div.project-name {
+    flex-grow: 1;
+}
+h2.project-name {
+    cursor: pointer;
+    padding: 0 5px;
+    margin: 0;
+    border-radius: 4px;
+    transition: background 0.2s;
+    font-size: 1.4em;
+    text-align: center;
+    width: fit-content;
+    min-width: 100px;
+    margin: auto;
+    opacity: 0.8;
+}
+
+h2.project-name:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+h2.project-name[contenteditable="true"] {
+    background: white;
+    color: black;
+    outline: none;
+    cursor: text;
+}
+
+/* ============= MAIN================ */
+main {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+}
+
+/* =========== CANVAS ============== */
+
 .canvas-container {
-  position: relative;
-  width: fit-content;
+    position: relative;
+    width: fit-content;
+    background-color: white;
 }
 
-.pop-up {
-  max-width: 400px;
-  background: #cce6ff;
-  padding: 7px;
-  border-radius: 5px;
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-
-  display: none;
+/* =========== ASIDE TOOLS ============= */
+/* Generic aside */
+aside {
+    width: 120px;
 }
-.pop-up.show {
-  display: block;
+.tools-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-auto-rows: auto;
+    gap: 5px;
+    margin: 10px;
 }
-
 .tools-container button {
-  padding: 8px 10px;
-  background-color: #9cbfe2;
-  outline: none;
-  border-radius: 4px;
-  border: none;
+    padding: 8px 10px;
+    background-color: #9cbfe2;
+    outline: none;
+    border-radius: 4px;
+    border: none;
+    aspect-ratio: 1;
 }
 .tools-container button.pressed {
-  background-color: 	#3473b2;
-  font-weight: bold;
-  color: white
+    background-color: #3473b2;
+    font-weight: bold;
+    color: white;
 }
 .tools-container button > * {
-  pointer-events: none;
+    pointer-events: none;
 }
 
-canvas.color-picker {
-    cursor: crosshair;
-}
+/* =============== ASIDE COLORS ================ */
 
-/* 1. Criamos uma classe base para o tamanho e forma */
-#selected-color, 
+#selected-color,
 .color-swatch {
-    width: 40px;
-    height: 40px;
     border-radius: 4px; /* Use 50% se quiser círculos */
     border: 2px solid #ddd;
     cursor: pointer;
@@ -51,37 +146,38 @@ canvas.color-picker {
     display: inline-block;
     vertical-align: middle;
     transition: transform 0.1s ease;
+    appearance: none;
 }
 
-/* 2. Removemos o estilo padrão do input de cor */
 #selected-color {
-  appearance: none;
+    width: 40px;
+    height: 40px;
+    appearance: none;
     -webkit-appearance: none; /* Remove bordas internas no Chrome */
     background: none;
 }
 
-/* 3. Estilizando a "caixa de cor" interna do input (Chrome/Safari/Edge) */
 #selected-color::-webkit-color-swatch {
     border: none;
     border-radius: 2px;
 }
 
-/* 4. Estilizando a "caixa de cor" interna do input (Firefox) */
 #selected-color::-moz-color-swatch {
     border: none;
     border-radius: 2px;
 }
 
-/* 5. Feedback visual ao passar o mouse */
 #selected-color:hover,
 .color-swatch:hover {
-    transform: scale(1.1);
-    border-color: #888;
+    /*     transform: scale(1.1);
+    border-color: #888; */
 }
 
 /* Layout do container de recentes */
 .recent-colors {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(3, 30px);
+    grid-auto-rows: 30px;
     gap: 8px;
     margin-top: 5px;
 }
