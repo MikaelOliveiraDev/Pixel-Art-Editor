@@ -21,60 +21,58 @@
             </div>
 
             <div class="project-name">
-
                 <h2 class="project-name">Untitled</h2>
             </div>
         </header>
 
         <main>
-  
-            
             <aside class="tools">
                 <h2>Tools</h2>
                 <div class="tools-container">
-                    <button class="tool pen"><i data-lucide="pen-line"></i></button>
-                    <button class="tool move" disabled>
+                    <button class="tool pen" title="Pen (P)">
+                        <i data-lucide="pen-line"></i>
+                    </button>
+                    <button class="tool move" title="Move (M)" disabled>
                         <i data-lucide="move"></i>
                     </button>
-                    <button class="tool type-polyline">
+                    <button class="tool type-polyline" title="Line by typing (T)">
                         <i data-lucide="line-dot-right-horizontal"></i>
                     </button>
-                    <button class="tool bucket">
+                    <button class="tool bucket" title="Bucket (B)">
                         <i data-lucide="paint-bucket"></i>
+                    </button>
+                    <button class="tool pipette" title="Color Picker (P)">
+                        <i data-lucide="pipette"></i>
                     </button>
                 </div>
             </aside>
 
-          <div class="canvas-container">
+            <div class="canvas-container">
                 <canvas class="canvas" tabindex="0"></canvas>
-                
-                
             </div>
-
 
             <aside class="colors">
                 <h2>Colors</h2>
-                
-                <label for="selected-color">Selected</label><br>
+
+                <label for="selected-color">Selected</label><br />
                 <input type="color" name="selected-color" id="selected-color" />
-                <hr>
-                
+                <hr />
+
                 <label>Recents</label>
                 <div class="recent-colors"></div>
             </aside>
         </main>
-            
-            <!-- Development version -->
-            <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-            
-            <!-- Production version -->
-            <!--         <script src="https://unpkg.com/lucide@latest"></script>
+
+        <!-- Development version -->
+        <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+
+        <!-- Production version -->
+        <!--         <script src="https://unpkg.com/lucide@latest"></script>
             -->
-            
-            <script>
+
+        <script>
             lucide.createIcons();
         </script>
         <script src="./script.js"></script>
     </body>
-    </html>
-    
+</html>

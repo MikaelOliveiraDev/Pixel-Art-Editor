@@ -7,6 +7,8 @@ const Input = {
     hoverTarget: null,
     pointerId: null,
     isPointerDown: false,
+    clientX: null,
+    clientY: null,
 };
 
 const ArtBoard = {
@@ -26,14 +28,14 @@ const ArtBoard = {
         const parent = this.dom.parentElement;
         this.dom.width = parent.clientWidth;
         this.dom.height = parent.clientHeight;
-        console.log("resize")
+        console.log("resize");
     },
     init() {
         // Canvas setting
-        this.__resize()
+        this.__resize();
         this.dom.tabIndex = 1;
 
-        window.addEventListener("resize", () => this.__resize())
+        window.addEventListener("resize", () => this.__resize());
 
         this.dom.addEventListener("pointerdown", (e) => this.pointerDown(e));
         this.dom.addEventListener("click", (e) => this.click(e));
@@ -41,16 +43,7 @@ const ArtBoard = {
         this.dom.addEventListener("keydown", (e) => this.keyDown(e));
     },
 
-    keyDown(e) {
-        if (!(e.ctrlKey && e.shiftKey && e.key === "I")) e.preventDefault();
-
-        const arrowKeys = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"];
-        const numberKeys = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
-
-        if (numberKeys.includes(e.key)) selectedTool.numberKeyDown?.(e.key);
-        else if (arrowKeys.includes(e.key)) selectedTool.arrowKeyDown?.(e.key);
-        console.log(e.key);
-    },
+    keyDown(e) {},
     wheel(e) {
         e.preventDefault();
         const zoomSensitivity = 0.02;
@@ -301,10 +294,19 @@ const ColorPicker = {
     },
 
     hexToRgb(hex) {
+        console.log("hex", hex);
         const r = parseInt(hex.slice(1, 3), 16);
         const g = parseInt(hex.slice(3, 5), 16);
         const b = parseInt(hex.slice(5, 7), 16);
         return [r, g, b];
+    },
+    rgbToHex(r, g, b) {
+        const toHex = (n) => n.toString(16).padStart(2, "0");
+        return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+    },
+    rgbStringToHex(rgb) {
+        const [r, g, b] = rgb.match(/\d+/g).map(Number);
+        return this.rgbToHex(r, g, b);
     },
 
     draw() {},
@@ -716,6 +718,49 @@ const Bucket = {
         return { toFill, leacked };
     },
 };
+const Pipette = {
+    click(e) {
+        const pos = getMousePos(Input, ArtBoard.dom);
+        const color = this.getColorAtMousePos(pos);
+        if (color) document.querySelector("input#selected-color").value = ColorPicker.rgbStringToHex(color);
+    },
+
+    getColorAtMousePos({ x, y }) {
+        const coords = ArtBoard.getGridCoords({ x, y });
+        const colorIndex = ArtBoard.pixels.get(`${coords.x},${coords.y}`);
+        const color =
+            ArtBoard.palette[colorIndex] || "rgba(255, 255, 255, 0.5)";
+
+        return color;
+    },
+
+    draw(ctx) {
+        const { x, y } = getMousePos(Input, ArtBoard.dom);
+        if (x === null || y === null) return;
+
+        const marginBottom = 5;
+        const radius = 25;
+
+        const drawX = x;
+        const drawY = y - marginBottom - radius;
+
+        // Remove camera zoom and pan transformations
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+        // Draw circle
+        ctx.beginPath();
+        ctx.arc(drawX, drawY, radius, 0, Math.PI * 2);
+        // Fill
+        ctx.fillStyle = this.getColorAtMousePos({ x, y });
+        ctx.fill();
+        // Stroke
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = "white";
+        ctx.stroke();
+
+        ctx.closePath();
+    },
+};
 
 // SAVING OBJECTS
 const Project = {
@@ -853,14 +898,28 @@ window.addEventListener("pointerup", windowPointerUp);
 window.addEventListener("keydown", windowKeyDown);
 // WINDOW EVENTS FUNCTIONS
 function windowKeyDown(e) {
+    const arrowKeys = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"];
+    const numberKeys = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+
+    if (numberKeys.includes(e.key)) {
+        selectedTool.numberKeyDown?.(e.key);
+    } else if (arrowKeys.includes(e.key)) {
+        selectedTool.arrowKeyDown?.(e.key);
+    }
+
+    console.log(e.key);
+
     if (e.key === "m") buttonMove.click();
-    else if (e.key === "d") buttonTypePolyline.click();
+    else if (e.key === "t") buttonTypePolyline.click();
     else if (e.key === "b") buttonBucket.click();
     else if (e.key === "p") buttonPen.click();
     else if (e.ctrlKey && e.key === "z") History.undo();
     else if (e.ctrlKey && e.key === "y") History.redo();
 }
 function windowPointerMove(e) {
+    Input.clientX = e.clientX;
+    Input.clientY = e.clientY;
+
     const artPos = getMousePos(e, ArtBoard.dom);
 
     if (ArtBoard.isPointInside(artPos.x, artPos.y)) {
@@ -957,6 +1016,7 @@ const buttonMove = document.querySelector("button.move");
 const buttonTypePolyline = document.querySelector("button.type-polyline");
 const buttonPen = document.querySelector("button.tool.pen");
 const buttonBucket = document.querySelector("button.tool.bucket");
+const buttonPipette = document.querySelector("button.pipette");
 
 buttonMove.addEventListener("click", (e) => handleClickTool(e, Move));
 buttonTypePolyline.addEventListener("click", (e) =>
@@ -964,6 +1024,7 @@ buttonTypePolyline.addEventListener("click", (e) =>
 );
 buttonPen.addEventListener("click", (e) => handleClickTool(e, Pen));
 buttonBucket.addEventListener("click", (e) => handleClickTool(e, Bucket));
+buttonPipette.addEventListener("click", (e) => handleClickTool(e, Pipette));
 // TOOL BUTTONS EVENTS
 function handleClickTool(e, tool) {
     const button = e.target;
