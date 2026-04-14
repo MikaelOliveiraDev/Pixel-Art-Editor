@@ -117,7 +117,9 @@
                 opacity: 0.8;
             }
 
-            .project button.delete {
+            /* Buttons for delete and restore */
+            button.delete,
+            button.restore {
                 position: absolute;
                 top: 0;
                 right: 0;
@@ -125,21 +127,36 @@
                 margin: 10px;
                 aspect-ratio: 1;
                 border-radius: 6px;
-                background: #ff4d4d;
                 color: white;
                 transition: opacity 0.5s;
                 opacity: 0;
                 border: none;
             }
-            .project:hover button.delete {
+            .projects-container .project:hover button.delete,
+            .trash-container .project:hover button.restore {
                 display: block;
+                cursor: pointer;
                 opacity: 1;
             }
-
-            button.delete i {
+            button.delete i,
+            button.restore i {
                 width: 30px;
                 height: 30px;
             }
+            /* Hide buttons from their wrong parents */
+            .trash-container button.delete,
+            .projects-container button.restore {
+                display: none;
+            }
+            /* Button delete espcificaly */
+            button.delete {
+                background: #ff4d4d;
+            }
+            button.restore {
+                background-color: var(--button-green);
+            }
+
+
 
             /* Trash */
             section.trash .project .delete {
@@ -151,10 +168,12 @@
                 margin-bottom: 14px;
             }
 
+
+            /* Expand buttons  */
             section.trash .expand,
             section.trash .contract {
-                width: 100%;
-                background-color: var(--gray-1);
+                width: 100%;/* 
+                background-color: var(--gray-1); */
                 padding: 10px;
                 display: flex;
                 justify-content: center;
@@ -189,8 +208,12 @@
                             </div>
                             <h3></h3>
                             <p></p>
-                            <button class="delete">
+
+                            <button class="delete" title="Delete">
                                 <i data-lucide="trash-2"></i>
+                            </button>
+                            <button class="restore" title="Restore">
+                                <i data-lucide="rotate-ccw"></i>
                             </button>
                         </div>
                     </template>
@@ -202,6 +225,8 @@
             <section class="trash">
                 <h2>Trash</h2>
                 <div class="trash-container"></div>
+
+
                 <div class="contract" onclick="contractTrash()">
                     <i data-lucide="chevron-up"></i>
                 </div>
@@ -218,215 +243,8 @@
         <!--         <script src="https://unpkg.com/lucide@latest"></script>
             -->
 
-        <script>
-            const projectsList = JSON.parse(
-                localStorage.getItem("active-projects") || "[]",
-            );
-            const trashedList = JSON.parse(
-                localStorage.getItem("trashed-projects") || "[]",
-            );
-            const projectsContainer = document.querySelector(
-                ".projects-container",
-            );
-            const trashContainer = document.querySelector(".trash-container");
-            const NOW = new Date();
 
-            projectsList.sort(sortFromLastest).forEach((projectName) => {
-                const projectData = JSON.parse(
-                    localStorage.getItem(projectName),
-                );
-                const lastSeen = new Date(projectData.lastSeen);
-
-                const templ = document.querySelector(
-                    ".projects-container template",
-                );
-                const clone = templ.content.cloneNode(true);
-
-                const projectEl = clone.querySelector(".project");
-                const titleEl = clone.querySelector("h3");
-                const imgEl = clone.querySelector("img");
-                const pEl = clone.querySelector("p");
-                const deleteButt = clone.querySelector("button.delete");
-
-                // Set interactivity
-                projectEl.onclick = () => {
-                    location.href = `/edit/edit.html?name=${projectName}`;
-                };
-                deleteButt.onclick = (e) => {
-                    e.stopPropagation();
-
-                    // Update active list
-                    const newList = projectsList.filter(
-                        (name) => name !== projectName,
-                    );
-                    localStorage.setItem(
-                        "active-projects",
-                        JSON.stringify(newList),
-                    );
-
-                    // Upadte inactive list
-                    trashedList.push(projectName);
-                    localStorage.setItem(
-                        "trashed-projects",
-                        JSON.stringify(trashedList),
-                    );
-
-                    // Update last seen
-                    projectData.lastSeen = new Date().toISOString();
-                    localStorage.setItem(
-                        projectName,
-                        JSON.stringify(projectData),
-                    );
-
-                    projectsContainer.removeChild(projectEl);
-                    trashContainer.prepend(projectEl);
-                };
-
-                // Set title
-                const TITLE_LIMIT = 35;
-                projectName.length > TITLE_LIMIT
-                    ? (titleEl.innerText =
-                          projectName.substring(0, TITLE_LIMIT) + "...")
-                    : (titleEl.innerText = projectName);
-
-                // Set date
-                if (projectData.lastSeen) {
-                    if (
-                        NOW.toLocaleDateString() ===
-                        lastSeen.toLocaleDateString()
-                    ) {
-                        const timeString = lastSeen.toLocaleTimeString(
-                            "en-US",
-                            {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                                hour12: true,
-                            },
-                        );
-                        pEl.innerText = "Seen today, at " + timeString;
-                    } else pEl.innerText = "Seen at "+ lastSeen.toLocaleDateString();
-                }
-
-                if (projectData.dataURL) imgEl.src = projectData.dataURL;
-                else imgEl.parentElement.removeChild(imgEl);
-
-                projectsContainer.appendChild(clone);
-            });
-
-            trashedList.sort(sortFromLastest).forEach((projectName) => {
-                const projectData = JSON.parse(
-                    localStorage.getItem(projectName) || "[]",
-                );
-
-                // Check if should be deleted
-                const LIMIT_DAYS_IN_TRASH = 30;
-                let lastSeen = new Date(projectData.lastSeen);
-                const msDifference = NOW - lastSeen;
-                const daysDifference = Math.floor(
-                    msDifference / (1000 * 60 * 60 * 24000),
-                );
-                if (daysDifference > LIMIT_DAYS_IN_TRASH|| isNaN(daysDifference)) {
-                    // Remove from list
-                    const newList = trashedList.filter(
-                        (name) => name !== projectName,
-                    );
-                    localStorage.setItem(
-                        "trashed-projects",
-                        JSON.stringify(newList),
-                    );
-
-                    // Remove from localStorage
-                    localStorage.removeItem(projectName)
-                    return;
-                }
-
-                const templ = document.querySelector(
-                    ".projects-container template",
-                );
-                const clone = templ.content.cloneNode(true);
-
-                const projectEl = clone.querySelector(".project");
-                const titleEl = clone.querySelector("h3");
-                const imgEl = clone.querySelector("img");
-                const deleteButt = clone.querySelector("button.delete");
-                const pEl = clone.querySelector("p");
-
-                projectEl.onclick = () => {
-                    e.stopPropagation();
-
-                    // Update active list
-                    projectsList.push(projectName);
-                    localStorage.setItem(
-                        "active-projects",
-                        JSON.stringify(projectsList),
-                    );
-
-                    // Upadte inactive list
-                    const newList = trashedList.filter(
-                        (name) => name !== projectName,
-                    );
-                    localStorage.setItem(
-                        "trashed-projects",
-                        JSON.stringify(newList),
-                    );
-
-                    // Switch parents
-                    trashContainer.removeChild(projectEl);
-                    projectsContainer.prepend(projectEl);
-                };
-
-                titleEl.innerText = projectName;
-
-                // Set date
-                if (projectData.lastSeen) {
-                    if (
-                        NOW.toLocaleDateString() ===
-                        lastSeen.toLocaleDateString()
-                    ) {
-                        const timeString = lastSeen.toLocaleTimeString(
-                            "en-US",
-                            {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                                hour12: true,
-                            },
-                        );
-                        pEl.innerText = "Deleted today, at " + timeString;
-                    } else pEl.innerText = "Deleted at " + lastSeen.toLocaleDateString();
-                }
-
-                if (projectData.dataURL) imgEl.src = projectData;
-                else imgEl.parentElement.removeChild(imgEl);
-
-                trashContainer.appendChild(clone);
-            });
-
-            function sortFromLastest(projectNameA, projectNameB) {
-                const dataA = JSON.parse(localStorage.getItem(projectNameA));
-                const dataB = JSON.parse(localStorage.getItem(projectNameB));
-
-                if (!dataA?.lastSeen) return 1;
-                if (!dataB?.lastSeen) return -1;
-
-                const dateA = new Date(dataA.lastSeen);
-                const dateB = new Date(dataB.lastSeen);
-
-                // Lastest seen projects first
-                if (dateA < dateB) return 1;
-                else return -1;
-            }
-
-            function expandTrash() {
-                trashContainer.style.display = "grid";
-                document.querySelector(".contract").style.display = "flex";
-                document.querySelector(".expand").style.display = "none";
-            }
-            function contractTrash() {
-                trashContainer.style.display = "none";
-                document.querySelector(".contract").style.display = "none";
-                document.querySelector(".expand").style.display = "flex";
-            }
-        </script>
+            <script src="./index.js"></script>
         <script>
             lucide.createIcons();
         </script>
