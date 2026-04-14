@@ -108,10 +108,15 @@
 
             .project h3 {
                 font-size: 14px;
-                text-align: center;
                 word-break: break-word;
                 text-overflow: ellipsis;
             }
+            .project p {
+                margin-top: 6px;
+                font-size: 12px;
+                opacity: 0.8;
+            }
+
             .project button.delete {
                 position: absolute;
                 top: 0;
@@ -183,6 +188,7 @@
                                 <img />
                             </div>
                             <h3></h3>
+                            <p></p>
                             <button class="delete">
                                 <i data-lucide="trash-2"></i>
                             </button>
@@ -223,11 +229,13 @@
                 ".projects-container",
             );
             const trashContainer = document.querySelector(".trash-container");
+            const NOW = new Date();
 
-            projectsList.toReversed().forEach((projectName) => {
+            projectsList.sort(sortFromLastest).forEach((projectName) => {
                 const projectData = JSON.parse(
                     localStorage.getItem(projectName),
                 );
+                const lastSeen = new Date(projectData.lastSeen);
 
                 const templ = document.querySelector(
                     ".projects-container template",
@@ -237,8 +245,10 @@
                 const projectEl = clone.querySelector(".project");
                 const titleEl = clone.querySelector("h3");
                 const imgEl = clone.querySelector("img");
+                const pEl = clone.querySelector("p");
                 const deleteButt = clone.querySelector("button.delete");
 
+                // Set interactivity
                 projectEl.onclick = () => {
                     location.href = `/edit/edit.html?name=${projectName}`;
                 };
@@ -261,11 +271,41 @@
                         JSON.stringify(trashedList),
                     );
 
+                    // Update last seen
+                    projectData.lastSeen = new Date().toISOString();
+                    localStorage.setItem(
+                        projectName,
+                        JSON.stringify(projectData),
+                    );
+
                     projectsContainer.removeChild(projectEl);
                     trashContainer.prepend(projectEl);
                 };
 
-                titleEl.innerText = projectName;
+                // Set title
+                const TITLE_LIMIT = 35;
+                projectName.length > TITLE_LIMIT
+                    ? (titleEl.innerText =
+                          projectName.substring(0, TITLE_LIMIT) + "...")
+                    : (titleEl.innerText = projectName);
+
+                // Set date
+                if (projectData.lastSeen) {
+                    if (
+                        NOW.toLocaleDateString() ===
+                        lastSeen.toLocaleDateString()
+                    ) {
+                        const timeString = lastSeen.toLocaleTimeString(
+                            "en-US",
+                            {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: true,
+                            },
+                        );
+                        pEl.innerText = "Seen today, at " + timeString;
+                    } else pEl.innerText = "Seen at "+ lastSeen.toLocaleDateString();
+                }
 
                 if (projectData.dataURL) imgEl.src = projectData.dataURL;
                 else imgEl.parentElement.removeChild(imgEl);
@@ -273,12 +313,33 @@
                 projectsContainer.appendChild(clone);
             });
 
-            trashedList.toReversed().forEach((projectName) => {
+            trashedList.sort(sortFromLastest).forEach((projectName) => {
                 const projectData = JSON.parse(
                     localStorage.getItem(projectName) || "[]",
                 );
 
-                console.log(projectName);
+                // Check if should be deleted
+                const LIMIT_DAYS_IN_TRASH = 30;
+                let lastSeen = new Date(projectData.lastSeen);
+                const msDifference = NOW - lastSeen;
+                const daysDifference = Math.floor(
+                    msDifference / (1000 * 60 * 60 * 24000),
+                );
+                if (daysDifference > LIMIT_DAYS_IN_TRASH|| isNaN(daysDifference)) {
+                    // Remove from list
+                    const newList = trashedList.filter(
+                        (name) => name !== projectName,
+                    );
+                    localStorage.setItem(
+                        "trashed-projects",
+                        JSON.stringify(newList),
+                    );
+
+                    // Remove from localStorage
+                    localStorage.removeItem(projectName)
+                    return;
+                }
+
                 const templ = document.querySelector(
                     ".projects-container template",
                 );
@@ -288,6 +349,7 @@
                 const titleEl = clone.querySelector("h3");
                 const imgEl = clone.querySelector("img");
                 const deleteButt = clone.querySelector("button.delete");
+                const pEl = clone.querySelector("p");
 
                 projectEl.onclick = () => {
                     e.stopPropagation();
@@ -315,11 +377,44 @@
 
                 titleEl.innerText = projectName;
 
+                // Set date
+                if (projectData.lastSeen) {
+                    if (
+                        NOW.toLocaleDateString() ===
+                        lastSeen.toLocaleDateString()
+                    ) {
+                        const timeString = lastSeen.toLocaleTimeString(
+                            "en-US",
+                            {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                hour12: true,
+                            },
+                        );
+                        pEl.innerText = "Deleted today, at " + timeString;
+                    } else pEl.innerText = "Deleted at " + lastSeen.toLocaleDateString();
+                }
+
                 if (projectData.dataURL) imgEl.src = projectData;
                 else imgEl.parentElement.removeChild(imgEl);
 
                 trashContainer.appendChild(clone);
             });
+
+            function sortFromLastest(projectNameA, projectNameB) {
+                const dataA = JSON.parse(localStorage.getItem(projectNameA));
+                const dataB = JSON.parse(localStorage.getItem(projectNameB));
+
+                if (!dataA?.lastSeen) return 1;
+                if (!dataB?.lastSeen) return -1;
+
+                const dateA = new Date(dataA.lastSeen);
+                const dateB = new Date(dataB.lastSeen);
+
+                // Lastest seen projects first
+                if (dateA < dateB) return 1;
+                else return -1;
+            }
 
             function expandTrash() {
                 trashContainer.style.display = "grid";
