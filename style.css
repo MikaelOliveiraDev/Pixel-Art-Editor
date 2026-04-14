@@ -8,3 +8,9 @@ body {
     --blue: #9cbfe2;
     --blue-pressed: #3473b2;
 }
+
+hr {
+    margin: 20px 0;
+    border: none;
+    border-top: 1px solid var(--gray-1-hover);
+}

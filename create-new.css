@@ -1,0 +1,76 @@
+.page.create-new {
+    --blur: 1.5px;
+    background-color: rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(var(--blur));
+    -webkit-backdrop-filter: blur(var(--blur));
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: none;
+    justify-content: center;
+    align-items: center;
+}
+
+.form {
+    background-color: var(--gray-1);
+    padding: 30px;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--gray-1-hover);
+}
+
+.form header h2 {
+    margin-bottom: 20px;
+    text-align: center;
+    font-size: 1.5rem;
+}
+.form label {
+    display: block;
+    font-size: 14px;
+    margin-bottom: 8px;
+    color: #bbb;
+}
+.form input[type="text"] {
+    width: 100%;
+    padding: 12px;
+    background: var(--gray-0);
+    border: 2px solid var(--gray-1-hover);
+    border-radius: 6px;
+    color: white;
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.2s;
+}
+.form input[type="text"]:focus {
+    border-color: var(--blue);
+}
+
+.form button {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 10px;
+    border: none;
+    border-radius: 6px;
+    background-color: var(--gray-1-light-hover);
+    color: white;
+    cursor: pointer;
+    font-weight: bold;
+    transition:
+        background 0.2s,
+        transform 0.1s;
+    text-align: left;
+}
+.form button:not(:disabled):hover {
+    background-color: var(--gray-1-hover);
+}
+
+.form button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background-color: #1a1a1a;
+    color: #555;
+}

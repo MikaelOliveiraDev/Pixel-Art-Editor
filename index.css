@@ -7,6 +7,7 @@
 
 body {
     background: var(--gray-0);
+    position: relative;
     color: #eee;
     padding: 30px;
 }
@@ -51,7 +52,6 @@ main {
 }
 main > hr {
     margin: 30px auto;
-    border: 1px solid var(--gray-1);
 }
 
 /* Projects grid */
@@ -112,7 +112,7 @@ button.restore {
     top: 0;
     right: 0;
     padding: 4px;
-    margin: 10px;
+    margin: calc(5px + 10px); /* self margin + .project margin */
     aspect-ratio: 1;
     border-radius: 6px;
     color: white;

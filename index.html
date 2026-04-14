@@ -5,14 +5,13 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Pixel Arts</title>
         <link rel="stylesheet" href="style.css" />
-        <link rel="stylesheet" href="index.css"/>
+        <link rel="stylesheet" href="index.css" />
+        <link rel="stylesheet" href="create-new.css">
     </head>
     <body>
         <div class="banner">
             <h1>Pixel Art Editor</h1>
-            <a href="/edit/edit.html">
-                <button>Create new</button>
-            </a>
+            <button onclick="showCreateNewScreen()">Create new</button>
         </div>
 
         <main>
@@ -44,7 +43,6 @@
                 <h2>Trash</h2>
                 <div class="trash-container"></div>
 
-
                 <div class="contract" onclick="contractTrash()">
                     <i data-lucide="chevron-up"></i>
                 </div>
@@ -54,6 +52,25 @@
             </section>
         </main>
 
+
+        
+        <!-- SUBPAGES -->
+         <div class="page create-new">
+            <div class="form">
+                <header>
+                    <h2>Create New Project</h2>
+                </header>
+                <label for="project-name">Project name:</label><br>
+                <input type="text" id="project-name" onfocus="this.select()">
+                <hr>
+                <label for="">How to start:</label>
+                <button class="scratch">From scratch</button>
+                <button class="import" disabled>Import image (1 pixel scale)</button>
+                <button class="convert" disabled>Extract pixel art</button>
+            </div>
+         </div>
+        
+
         <!-- Development version -->
         <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 
@@ -61,8 +78,8 @@
         <!--         <script src="https://unpkg.com/lucide@latest"></script>
             -->
 
-
-            <script src="./index.js"></script>
+        <script src="./index.js"></script>
+        <script src="./create-new.js"></script>
         <script>
             lucide.createIcons();
         </script>
