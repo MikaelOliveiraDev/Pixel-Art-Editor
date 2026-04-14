@@ -2,7 +2,7 @@
 <html lang="en">
     <head>
         <meta charset="UTF-8" />
-        <link rel="stylesheet" href="style.css" />
+        <link rel="stylesheet" href="./../style.css" />
         <link rel="stylesheet" href="./edit.css" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>Pen</title>
@@ -15,7 +15,7 @@
                 </button>
 
                 <nav class="dropdown-menu">
-                    <a href="index.html">Projects</a>
+                    <a href="./../index.html">Projects</a>
                     <button id="btn-export" onclick="ArtBoard.exportAsPNG()">Export as PNG</button>
                 </nav>
             </div>
@@ -84,6 +84,12 @@
         <script>
             lucide.createIcons();
         </script>
-        <script src="./script.js"></script>
+        <script src="./edit.js"></script>
+        
+        <script src="./tools/Pipette.js"></script>
+        <script src="./tools/TypePolyline.js"></script>
+        <script src="./tools/Eraser.js"></script>
+        <script src="./tools/Pen.js"></script>
+        <script src="./tools/Bucket.js"></script>
     </body>
 </html>

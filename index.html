@@ -168,7 +168,7 @@
     <body>
         <div class="banner">
             <h1>Pixel Art Editor</h1>
-            <a href="/edit.html?name=">
+            <a href="/edit/edit.html">
                 <button>Create new</button>
             </a>
         </div>
@@ -240,7 +240,7 @@
                 const deleteButt = clone.querySelector("button.delete");
 
                 projectEl.onclick = () => {
-                    location.href = `/edit.html?name=${projectName}`;
+                    location.href = `/edit/edit.html?name=${projectName}`;
                 };
                 deleteButt.onclick = (e) => {
                     e.stopPropagation();

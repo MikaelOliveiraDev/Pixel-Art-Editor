@@ -110,8 +110,7 @@ const ArtBoard = {
     pointerUp(e) {
         this.lastMousePos = { x: null, y: null };
 
-        if (selectedTool !== Eraser)
-        this.dom.style.cursor = "default";
+        if (selectedTool !== Eraser) this.dom.style.cursor = "default";
     },
 
     isPointInside(x, y) {
@@ -132,7 +131,7 @@ const ArtBoard = {
     },
 
     getColorIndex(color, add) {
-        const colorString = rgbArrayToString(color);
+        const colorString = ColorPicker.rgbArrayToString(color);
         let index = this.palette.indexOf(colorString);
 
         if (index === -1) {
@@ -179,7 +178,6 @@ const ArtBoard = {
         this.pixels.delete(`${coords.x},${coords.y}`);
 
         if (recalculateBounds) {
-
             const c = this.drawingBoudingCorners;
             if (
                 coords.x === c.left ||
@@ -399,578 +397,34 @@ const ColorPicker = {
         const [r, g, b] = rgb.match(/\d+/g).map(Number);
         return this.rgbToHex(r, g, b);
     },
+    hslToRgb([h, s, l]) {
+        // Normaliza os valores para a escala 0-1
+        s /= 100;
+        l /= 100;
+
+        const k = (n) => (n + h / 30) % 12;
+        const a = s * Math.min(l, 1 - l);
+        const f = (n) =>
+            l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+
+        // Converte de volta para a escala 0-255 e arredonda
+        const r = Math.round(255 * f(0));
+        const g = Math.round(255 * f(8));
+        const b = Math.round(255 * f(4));
+
+        return [r, g, b];
+    },
+    rgbArrayToString(color) {
+        if (color instanceof Array || ArrayBuffer.isView(color))
+            return `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
+        else if (typeof color === "string") return color;
+    },
 
     draw() {},
 };
 
 // TOOLS OBJECTS
 const Move = {};
-const TypePolyline = {
-    lineDirection: null,
-    curveDirection: null,
-    posX: null,
-    posY: null,
-    isLineStarted: false,
-    isBlinking: false,
-    __blinkColor: null,
-    __blinkInterval: null,
-    __arrowAngle: null,
-    __arrowColor: null,
-
-    getState() {
-        const keys = [
-            "posX",
-            "posY",
-            "lineDirection",
-            "curveDirection",
-            "isLineStarted",
-            "__arrowAngle",
-            "__arrowColor",
-        ];
-
-        return Object.fromEntries(keys.map((key) => [key, this[key]]));
-    },
-    applyState(state) {
-        Object.assign(this, state);
-    },
-
-    click(e) {
-        const coords = ArtBoard.getGridCoords(getMousePos(e, this.dom));
-        this.posX = coords.x;
-        this.posY = coords.y;
-        this.lineDirection = null;
-        this.curveDirection = null;
-        this.isLineStarted = false;
-        this.__arrowAngle = null;
-
-        this.__activateBlink(this.posX, this.posY, ColorPicker.selectedColor);
-
-        // Controle do Popup
-        if (showTutorial) {
-            applyTemporaryClass(".pop-up.set-line-direction", "show", 3000);
-        }
-    },
-
-    reset(key) {
-        this.lineDirection = null;
-        this.curveDirection = null;
-        this.__arrowAngle = null;
-        this.__arrowColor = "red";
-        this.arrowKeyDown(key);
-    },
-
-    arrowKeyDown(key) {
-        if (this.posX === null || this.posY === null) return;
-
-        const direction = key.toLowerCase().replace("arrow", "");
-
-        // First keydown: set lineDirection
-        if (this.lineDirection === null) {
-            const ANGLES_MAP = {
-                right: 0,
-                down: 90,
-                left: 180,
-                up: 270,
-            };
-            this.lineDirection = direction;
-            this.__arrowAngle = ANGLES_MAP[direction];
-            this.__arrowColor = "blue";
-            return;
-        }
-
-        const SA = 14; // a short angle
-        const ANGLES_ON_RIGHT = [90, 90 - SA, 0 + SA, 0, 0 - SA, 270 + SA, 270];
-        const ANGLES_ON_BOTTOM = [
-            180,
-            180 - SA,
-            90 + SA,
-            90,
-            90 - SA,
-            0 + SA,
-            0,
-        ];
-        const ANGLES_ON_LEFT = [
-            90,
-            90 + SA,
-            180 - SA,
-            180,
-            180 + SA,
-            270 - SA,
-            270,
-        ];
-        const ANGLES_ON_TOP = [
-            180,
-            180 + SA,
-            270 - SA,
-            270,
-            270 + SA,
-            0 - SA,
-            0,
-        ];
-
-        const jumpAngle = function (angles, clockwise) {
-            let index = angles.indexOf(this.__arrowAngle);
-            if (index === -1) return false;
-
-            const jump = clockwise ? 1 : -1;
-            const newAngle = angles[index + jump];
-            console.log(newAngle);
-
-            if (newAngle !== undefined) this.__arrowAngle = newAngle;
-        }.bind(this);
-
-        // SECOND KEYDOWN: set arrowAngle
-        if (direction === "right") {
-            jumpAngle(ANGLES_ON_TOP, true) || jumpAngle(ANGLES_ON_BOTTOM, true);
-        } else if (direction === "down") {
-            jumpAngle(ANGLES_ON_RIGHT, false) ||
-                jumpAngle(ANGLES_ON_LEFT, false);
-        } else if (direction === "left") {
-            jumpAngle(ANGLES_ON_TOP, false) ||
-                jumpAngle(ANGLES_ON_BOTTOM, false);
-        } else {
-            jumpAngle(ANGLES_ON_RIGHT, true) || jumpAngle(ANGLES_ON_LEFT, true);
-        }
-
-        // Set curveDirection
-        const ANGLES_DIRS_MAP = new Map([
-            [0 - SA, ["right", "up"]],
-            [0, ["right", null]],
-            [0 + SA, ["right", "down"]],
-
-            [90 - SA, ["down", "right"]],
-            [90, ["down", null]],
-            [90 + SA, ["down", "left"]],
-
-            [180 - SA, ["left", "down"]],
-            [180, ["left", null]],
-            [180 + SA, ["left", "up"]],
-
-            [270 - SA, ["up", "left"]],
-            [270, ["up", null]],
-            [270 + SA, ["up", "right"]],
-        ]);
-
-        const dir = ANGLES_DIRS_MAP.get(this.__arrowAngle);
-        if (!dir) return;
-
-        this.lineDirection = dir[0];
-        this.curveDirection = dir[1];
-
-        console.log(this.lineDirection, this.curveDirection);
-
-        return;
-    },
-
-    numberKeyDown(key) {
-        if (!this.lineDirection) return;
-        if (this.__arrowColor === "red") return;
-
-        History.saveState();
-
-        // Utility function
-        function moveTo(self, dir) {
-            if (dir === "right") self.posX++;
-            else if (dir === "down") self.posY++;
-            else if (dir === "left") self.posX--;
-            else if (dir === "up") self.posY--;
-        }
-
-        // user can type "0" for 10
-        const pixelsToPaint = key === "0" ? 10 : parseInt(key);
-        let paintedPixels = 0;
-
-        if (this.isLineStarted) {
-            moveTo(this, this.curveDirection);
-            moveTo(this, this.lineDirection);
-        } else {
-            this.isLineStarted = true;
-            this.__arrowColor = "orange";
-        }
-
-        // Paint sub-line
-        while (true) {
-            ArtBoard.paintPixel(
-                { x: this.posX, y: this.posY },
-                ColorPicker.selectedColor,
-            );
-            paintedPixels++;
-
-            if (paintedPixels < pixelsToPaint) {
-                moveTo(this, this.lineDirection);
-            } else {
-                break;
-            }
-        }
-
-        if (!this.curveDirection) {
-            // Show popup
-            if (showTutorial)
-                applyTemporaryClass(
-                    ".pop-up.set-curve-direction",
-                    "show",
-                    3000,
-                );
-
-            return;
-        }
-    },
-
-    draw(ctx) {
-        // draw arrow
-        if (this.__arrowAngle !== null && this.posX !== null) {
-            this.__drawArrow(ctx, this.__arrowAngle);
-        }
-
-        // draw blink
-        if (this.isBlinking) {
-            ctx.globalAlpha = this.isLineStarted ? 0.5 : 1;
-            ctx.fillStyle = this.__blinkColor;
-            ctx.fillRect(
-                this.posX * ArtBoard.pixelSize,
-                this.posY * ArtBoard.pixelSize,
-                ArtBoard.pixelSize,
-                ArtBoard.pixelSize,
-            );
-            ctx.globalAlpha = 1;
-        }
-    },
-
-    __drawArrow(ctx, angle) {
-        const rad = angle * (Math.PI / 180);
-        const { pixelSize } = ArtBoard;
-
-        ctx.save();
-        // Translada para o centro do pixel selecionado
-        ctx.translate(
-            this.posX * pixelSize + pixelSize / 2,
-            this.posY * pixelSize + pixelSize / 2,
-        );
-        ctx.rotate(rad);
-
-        ctx.strokeStyle = this.__arrowColor;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-
-        // Desenha o corpo da seta
-        ctx.moveTo(pixelSize / 2, 0);
-        ctx.lineTo(3 * pixelSize, 0);
-
-        // Desenha a ponta da seta
-        ctx.lineTo(2.5 * pixelSize, -0.25 * pixelSize);
-        ctx.moveTo(3 * pixelSize, 0);
-        ctx.lineTo(2.5 * pixelSize, 0.25 * pixelSize);
-
-        ctx.stroke();
-        ctx.restore();
-    },
-
-    __activateBlink(posX, posY, color) {
-        if (this.__blinkInterval) clearInterval(this.__blinkInterval);
-
-        this.isBlinking = true;
-        this.__blinkColor = rgbArrayToString(color);
-
-        const constrastColor = "rgb(255,255, 255)";
-        let isContrastColor = false;
-
-        this.__blinkInterval = setInterval(() => {
-            this.__blinkColor = isContrastColor
-                ? constrastColor
-                : rgbArrayToString(ColorPicker.selectedColor);
-            isContrastColor = !isContrastColor;
-        }, 500);
-    },
-};
-const Pen = {
-    lastX: null,
-    lastY: null,
-
-    pointerDown(e) {
-        History.saveState();
-
-        const coords = ArtBoard.getGridCoords(getMousePos(e, this.dom));
-
-        this.lastX = coords.x;
-        this.lastY = coords.y;
-
-        ArtBoard.paintPixel(coords, ColorPicker.selectedColor);
-    },
-    pointerMove(e) {
-        if (this.lastX === null) return;
-
-        const { x, y } = ArtBoard.getGridCoords(getMousePos(e, ArtBoard.dom));
-        if (x === this.lastX && y === this.lastY) return;
-        this.drawLine(this.lastX, this.lastY, x, y);
-
-        this.lastX = x;
-        this.lastY = y;
-    },
-    pointerUp() {
-        this.lastX = null;
-        this.lastY = null;
-    },
-
-    drawLine(x0, y0, x1, y1) {
-        const dx = Math.abs(x1 - x0);
-        const dy = Math.abs(y1 - y0);
-
-        const sx = x0 < x1 ? 1 : -1;
-        const sy = y0 < y1 ? 1 : -1;
-
-        let err = dx - dy;
-
-        while (true) {
-            ArtBoard.paintPixel({ x: x0, y: y0 }, ColorPicker.selectedColor);
-
-            if (x0 === x1 && y0 === y1) break;
-
-            const e2 = 2 * err;
-
-            if (e2 > -dy) {
-                err -= dy;
-                x0 += sx;
-            }
-
-            if (e2 < dx) {
-                err += dx;
-                y0 += sy;
-            }
-        }
-    },
-};
-const Eraser = {
-    lastX: null,
-    lastY: null,
-    size: 1,
-
-    select() {
-        const eraserRange = document.querySelector("#eraser-size");
-        eraserRange.style.display = "block";
-
-        ArtBoard.dom.style.cursor = "none";
-    },
-    unselect() {
-        const eraserRange = document.querySelector("#eraser-size");
-        eraserRange.style.display = "none";
-
-        ArtBoard.dom.style.cursor = "pointer";
-    },
-
-    pointerDown(e) {
-        History.saveState();
-
-        const coords = ArtBoard.getGridCoords(getMousePos(e, this.dom));
-
-        this.lastX = coords.x;
-        this.lastY = coords.y;
-
-        this.eraseArea(coords)
-    },
-    pointerMove(e) {
-        if (this.lastX === null || this.lastY === null) return;
-
-        const { x, y } = ArtBoard.getGridCoords(getMousePos(e, ArtBoard.dom));
-        if (x === this.lastX && y === this.lastY) return;
-
-        this.eraseLine(this.lastX, this.lastY, x, y);
-
-        this.lastX = x;
-        this.lastY = y;
-    },
-    pointerUp() {
-        this.lastX = null;
-        this.lastY = null;
-
-
-        ArtBoard.recalculateBounds()
-        ArtBoard.updateDimensionsUI()
-    },
-    eraseArea(centerCoords) {
-        const offset = Math.floor(this.size / 2)
-        const startX = centerCoords.x - offset
-        const startY = centerCoords.y - offset
-
-        for (let i = 0; i < this.size; i++) {
-            for (let j = 0; j < this.size; j++) {
-                ArtBoard.clearPixel({x: startX + i, y: startY + j}, false)
-            }
-        }
-    },
-    eraseLine(x0, y0, x1, y1) {
-        const dx = Math.abs(x1 - x0);
-        const dy = Math.abs(y1 - y0);
-
-        const sx = x0 < x1 ? 1 : -1;
-        const sy = y0 < y1 ? 1 : -1;
-
-        let err = dx - dy;
-
-        while (true) {
-            this.eraseArea({ x: x0, y: y0 });
-
-            if (x0 === x1 && y0 === y1) break;
-
-            const e2 = 2 * err;
-
-            if (e2 > -dy) {
-                err -= dy;
-                x0 += sx;
-            }
-
-            if (e2 < dx) {
-                err += dx;
-                y0 += sy;
-            }
-        }
-
-
-    },
-
-    draw(ctx) {
-        const mousePos = getMousePos(Input, ArtBoard.dom);
-
-        const coords = ArtBoard.getGridCoords(mousePos);
-
-        let offset = Math.floor(this.size / 2)
-        let sizePx = ArtBoard.pixelSize * this.size
-
-        let x = (coords.x - offset) * ArtBoard.pixelSize 
-        let y = (coords.y - offset) * ArtBoard.pixelSize 
-
-        ctx.lineWidth = 2 / ArtBoard.camera.scale; // Linha constante independente do zoom
-        ctx.strokeStyle = "white";
-        ctx.strokeRect(
-            x,y,
-            sizePx,
-            sizePx,
-        );
-
-        ctx.strokeStyle = "black";
-        ctx.lineWidth = 1 / ArtBoard.camera.scale;
-        ctx.strokeRect(
-            x,y,
-            sizePx,
-            sizePx,
-        );
-    },
-};
-
-const Bucket = {
-    LIMIT: 1000,
-
-    click(e) {
-        const coords = ArtBoard.getGridCoords(getMousePos(e, ArtBoard.dom));
-
-        const startX = coords.x;
-        const startY = coords.y;
-
-        const startKey = `${startX},${startY}`;
-        const targetColorIndex = ArtBoard.pixels.get(startKey);
-        const fillColorIndex = ArtBoard.getColorIndex(
-            ColorPicker.selectedColor,
-            true,
-        );
-
-        if (targetColorIndex === fillColorIndex) return;
-
-        const result = this.floodFill(startX, startY, targetColorIndex);
-
-        if (result.leacked) {
-            alert("A área não está fechada ou é muito grande!");
-            return;
-        }
-
-        History.saveState();
-
-        result.toFill.forEach((coords) => {
-            ArtBoard.paintPixel(coords, ColorPicker.selectedColor);
-        });
-    },
-
-    floodFill(startX, startY, targetColorIndex) {
-        const stack = [{ x: startX, y: startY }];
-        const visited = new Set();
-        const toFill = [];
-
-        let leacked = false;
-
-        while (stack.length > 0) {
-            const { x, y } = stack.pop();
-            const key = `${x},${y}`;
-
-            if (visited.has(key)) continue;
-            if (
-                visited.size > 50000 ||
-                Math.abs(x) > 2000 ||
-                Math.abs(y) > 2000
-            ) {
-                leacked = true;
-                continue;
-            }
-
-            const currentColorIndex = ArtBoard.pixels.get(key);
-            console.log(key, currentColorIndex, targetColorIndex);
-
-            if (currentColorIndex === targetColorIndex) {
-                toFill.push({ x, y });
-                visited.add(key);
-
-                stack.push({ x: x + 1, y: y });
-                stack.push({ x: x - 1, y: y });
-                stack.push({ x: x, y: y + 1 });
-                stack.push({ x: x, y: y - 1 });
-            }
-        }
-
-        return { toFill, leacked };
-    },
-};
-const Pipette = {
-    click(e) {
-        const pos = getMousePos(Input, ArtBoard.dom);
-        const color = this.getColorAtMousePos(pos);
-        if (color)
-            document.querySelector("input#selected-color").value =
-                ColorPicker.rgbStringToHex(color);
-    },
-
-    getColorAtMousePos({ x, y }) {
-        const coords = ArtBoard.getGridCoords({ x, y });
-        const colorIndex = ArtBoard.pixels.get(`${coords.x},${coords.y}`);
-        const color =
-            ArtBoard.palette[colorIndex] || "rgba(255, 255, 255, 0.5)";
-
-        return color;
-    },
-
-    draw(ctx) {
-        const { x, y } = getMousePos(Input, ArtBoard.dom);
-        if (x === null || y === null) return;
-
-        const marginBottom = 5;
-        const radius = 25;
-
-        const drawX = x;
-        const drawY = y - marginBottom - radius;
-
-        // Remove camera zoom and pan transformations
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-
-        // Draw circle
-        ctx.beginPath();
-        ctx.arc(drawX, drawY, radius, 0, Math.PI * 2);
-        // Fill
-        ctx.fillStyle = this.getColorAtMousePos({ x, y });
-        ctx.fill();
-        // Stroke
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = "white";
-        ctx.stroke();
-
-        ctx.closePath();
-    },
-};
 
 // SAVING OBJECTS
 const Project = {
@@ -981,7 +435,7 @@ const Project = {
         this.name = "Untitled-" + now;
 
         Storage.save();
-        location.href = "/edit.html?name=" + this.name;
+        location.href = "/edit/edit.html?name=" + this.name;
     },
 
     rename(newName) {
@@ -1268,11 +722,11 @@ function handleClickTool(e, tool) {
 }
 
 // TOOL CONTROLS
-const eraserRange = document.querySelector("#eraser-size")
+const eraserRange = document.querySelector("#eraser-size");
 
 eraserRange.addEventListener("input", (e) => {
-    Eraser.size = e.target.value
-})
+    Eraser.size = e.target.value;
+});
 
 // HEADER AND NAV
 const h2ProjectName = document.querySelector("h2.project-name");
@@ -1301,29 +755,7 @@ function clickProjectName(e) {
 }
 
 // UTILITY FUNCTIONS
-function hslToRgb([h, s, l]) {
-    // Normaliza os valores para a escala 0-1
-    s /= 100;
-    l /= 100;
 
-    const k = (n) => (n + h / 30) % 12;
-    const a = s * Math.min(l, 1 - l);
-    const f = (n) =>
-        l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
-
-    // Converte de volta para a escala 0-255 e arredonda
-    const r = Math.round(255 * f(0));
-    const g = Math.round(255 * f(8));
-    const b = Math.round(255 * f(4));
-
-    return [r, g, b];
-}
-
-function rgbArrayToString(color) {
-    if (color instanceof Array || ArrayBuffer.isView(color))
-        return `rgb(${color[0]}, ${color[1]}, ${color[2]})`;
-    else if (typeof color === "string") return color;
-}
 function getMousePos(e, element = e.target) {
     const rect = element.getBoundingClientRect();
     return {
